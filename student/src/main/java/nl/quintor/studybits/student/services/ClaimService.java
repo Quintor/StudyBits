@@ -167,13 +167,14 @@ public class ClaimService {
 
         AuthcryptedMessage authcryptedMessage = mapper.map(response, AuthcryptedMessage.class);
         return decryptAuthcryptedMessage(authcryptedMessage, prover, nl.quintor.studybits.indy.wrapper.dto.Claim.class)
+                .thenCompose(AsyncUtil.wrapException(claim -> prover.storeClaim(claim).thenApply((_void) -> claim)) )
                 .thenApply(wrapperClaim -> mapper.map(wrapperClaim, Claim.class))
                 .get();
     }
 
     private AuthEncryptedMessageModel getEncryptedClaimRequestForClaimOffer(ClaimOffer claimOffer, Prover prover) throws Exception {
         log.debug("Creating ClaimRequest with claimOffer {}", claimOffer);
-        return prover.createClaimRequest(claimOffer)
+        return prover.storeClaimOfferAndCreateClaimRequest(claimOffer)
                 .thenCompose(
                         AsyncUtil.wrapException(claimRequest -> {
                             log.debug("AuthEncrypting ClaimRequest {} with Prover.", claimRequest);
