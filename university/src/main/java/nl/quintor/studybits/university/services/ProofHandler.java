@@ -81,10 +81,12 @@ public abstract class ProofHandler<T extends Proof> {
     @Transactional
     public Boolean handleProof(Long userId, Long proofRecordId, AuthcryptedMessage authcryptedMessage) {
         ProofRecord proofRecord = getProofRecord(userId, proofRecordId);
+        log.info("Handling proof for proofRecord {}", proofRecord);
         Validate.validState(StringUtils.isEmpty(proofRecord.getProofJson()), String.format("UserId %s already provided proof for proofRecordId %s.", userId, proofRecord));
         User user = Objects.requireNonNull(proofRecord.getUser());
         University university = Objects.requireNonNull(user.getUniversity());
         ProofRequest proofRequest = getProofRequest(university, user, proofRecord);
+        log.info("Handling proof with proofRequest: {}", proofRequest);
         T verifiedProof = getVerifiedProof(university.getName(), proofRequest, authcryptedMessage);
         proofRecord.setProofJson(ServiceUtils.objectToJson(verifiedProof));
         Boolean handled = handleProof(user, proofRecord, verifiedProof);
@@ -104,6 +106,7 @@ public abstract class ProofHandler<T extends Proof> {
     private T getVerifiedProof(String universityName, ProofRequest proofRequest, AuthcryptedMessage authcryptedMessage) {
         nl.quintor.studybits.indy.wrapper.dto.Proof proof = universityService
                 .authDecrypt(universityName, authcryptedMessage, nl.quintor.studybits.indy.wrapper.dto.Proof.class);
+        log.info("Got proof: {}", proof);
         List<nl.quintor.studybits.indy.wrapper.dto.ProofAttribute> attributes = universityService
                 .getVerifiedProofAttributes(universityName, proofRequest, proof);
         T result = newProof();
@@ -143,7 +146,7 @@ public abstract class ProofHandler<T extends Proof> {
         return proofAttributes
                 .stream()
                 .collect(Collectors.toMap(
-                        ProofAttribute::getFieldName,
+                        proofAttribute1 -> proofAttribute1.getFieldName(),
                         proofAttribute -> getAttributeInfo(proofAttribute, claimSchemaLookup))
                 );
     }

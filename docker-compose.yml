@@ -15,6 +15,8 @@ services:
         condition: service_healthy
     build:
       context: student
+    environment:
+      - RUST_LOG=info
     ports:
     - "8095:8095"
     network_mode: "host"
@@ -31,6 +33,8 @@ services:
     ports:
       - "8090:8090"
     network_mode: "host"
+    environment:
+    - RUST_LOG=info
     healthcheck:
       test: curl -f http://localhost:8090/test/health || exit 1
       interval: 5s
