@@ -59,20 +59,19 @@ public class ProofRequestService {
     public void fulfillProofRequest(ProofRequestRecord proofRequestRecord) throws Exception {
         ProofRequestInfo proofRequestInfo = this.getInfoFromRecord(proofRequestRecord);
 
-        studentProverService.withProverForStudent(proofRequestRecord.getStudent(), prover -> {
-            try {
-                AuthEncryptedMessageModel proof = this.getProofForProofRequest(proofRequestRecord.getStudent(), prover, proofRequestInfo);
-                Boolean result = this.sendProofToUniversity(proof);
+        try (Prover prover = studentProverService.getProver(proofRequestRecord.getStudent())){
+            AuthEncryptedMessageModel proof = this.getProofForProofRequest(proofRequestRecord.getStudent(), prover, proofRequestInfo);
+            Boolean result = this.sendProofToUniversity(proof);
 
-                if (result) {
-                    this.proofRequestRecordRepository.delete(proofRequestRecord);
-                } else {
-                    throw new IllegalStateException("Could not fulfill proof request. University returned failure.");
-                }
-            } catch (Exception e) {
-                throw new IllegalStateException(e);
+            if (result) {
+                this.proofRequestRecordRepository.delete(proofRequestRecord);
+            } else {
+                throw new IllegalStateException("Could not fulfill proof request. University returned failure.");
             }
-        });
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+
     }
 
     private Stream<ProofRequestInfo> getAllProofRequests(Student student, University university) {

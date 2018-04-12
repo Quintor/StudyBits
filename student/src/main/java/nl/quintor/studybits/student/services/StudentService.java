@@ -3,6 +3,8 @@ package nl.quintor.studybits.student.services;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import nl.quintor.studybits.indy.wrapper.IndyPool;
+import nl.quintor.studybits.indy.wrapper.Prover;
 import nl.quintor.studybits.indy.wrapper.dto.AnoncryptedMessage;
 import nl.quintor.studybits.indy.wrapper.dto.ConnectionRequest;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
@@ -32,9 +34,10 @@ public class StudentService {
     private UniversityService universityService;
     private MetaWalletService metaWalletService;
     private ProofRequestService proofRequestService;
-    private StudentProverService studentProverService;
     private ConnectionRecordService connectionRecordService;
+    private StudentProverService studentProverService;
     private Mapper mapper;
+    private IndyPool indyPool;
 
     private StudentModel toModel(Object student) {
         return mapper.map(student, StudentModel.class);
@@ -144,16 +147,14 @@ public class StudentService {
     }
 
     private AnoncryptedMessage acceptConnectionRequest(Student student, ConnectionRequest connectionRequest) throws Exception {
-        return studentProverService.withProverForStudent(student, prover -> {
-            try {
-                return prover
-                        .acceptConnectionRequest(connectionRequest)
-                        .thenCompose(AsyncUtil.wrapException(prover::anonEncrypt))
-                        .get();
-            } catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
-        });
+        try (Prover prover = studentProverService.getProver(student)) {
+            return prover
+                    .acceptConnectionRequest(connectionRequest)
+                    .thenCompose(AsyncUtil.wrapException(prover::anonEncrypt))
+                    .get();
+        } catch (Exception e) {
+        throw new IllegalStateException(e);
+        }
     }
 }
 

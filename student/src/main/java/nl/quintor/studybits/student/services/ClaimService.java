@@ -50,7 +50,7 @@ public class ClaimService {
      */
     public void getAndSaveNewClaimsForOwnerUserName(String studentUserName) throws Exception {
         Student student = studentService.getByUserName(studentUserName);
-        studentProverService.withProverForStudent(student, prover -> {
+        try (Prover prover = studentProverService.getProver(student)) {
             getAllStudentClaimInfo(student)
                     .filter(this::isNewClaimInfo)
                     .forEach((StudentClaimInfoModel claimInfo) -> {
@@ -64,7 +64,7 @@ public class ClaimService {
                             log.error(e.getMessage());
                         }
                     });
-        });
+        }
     }
 
     private boolean isNewClaimInfo(StudentClaimInfoModel claimInfoModel) {
