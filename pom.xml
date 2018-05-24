@@ -17,8 +17,8 @@
             </activation>
             <modules>
                 <module>indy-wrapper</module>
-                <module>student</module>
-                <module>university</module>
+                <!--<module>student</module>-->
+                <!--<module>university</module>-->
             </modules>
         </profile>
         <profile>
