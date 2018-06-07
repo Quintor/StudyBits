@@ -12,5 +12,5 @@ import java.util.List;
 public class UniversityIssuer {
     private String universityName;
     private String universityDid;
-    private List<String> definedSchemaIds;
+    private List<String> schemaIds;
 }

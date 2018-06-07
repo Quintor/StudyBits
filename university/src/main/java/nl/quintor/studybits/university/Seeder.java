@@ -67,7 +67,7 @@ public class Seeder {
 
     private void exchangeUniversityClaimIssuerSchemaInfo(String universityName, String universityIssuerName) {
         UniversityIssuer universityIssuer = universityService.getUniversityIssuer(universityIssuerName);
-        universityIssuer.getDefinedSchemaIds()
+        universityIssuer.getSchemaIds()
                 .forEach(schemaId -> universityService
                         .addClaimIssuerForSchema(universityName, new ClaimIssuerSchema(universityIssuerName, universityIssuer.getUniversityDid(), schemaId)));
     }

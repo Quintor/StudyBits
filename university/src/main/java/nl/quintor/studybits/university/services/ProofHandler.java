@@ -12,6 +12,7 @@ import nl.quintor.studybits.university.entities.ProofRecord;
 import nl.quintor.studybits.university.entities.University;
 import nl.quintor.studybits.university.entities.User;
 import nl.quintor.studybits.university.helpers.Lazy;
+import nl.quintor.studybits.university.models.SchemaDefinitionModel;
 import nl.quintor.studybits.university.repositories.ClaimSchemaRepository;
 import nl.quintor.studybits.university.repositories.ProofRecordRepository;
 import nl.quintor.studybits.university.repositories.UserRepository;
@@ -156,26 +157,26 @@ public abstract class ProofHandler<T extends Proof> {
                 .version(proofRecord.getProofVersion())
                 .nonce(proofRecord.getNonce())
                 .theirDid(theirDid)
-                .requestedAttributes(getRequestedAttributes(university.getId()))
+                .requestedAttributes(getRequestedAttributes(university))
                 .build();
     }
 
-    private Map<String, AttributeInfo> getRequestedAttributes(Long universityId) {
+    private Map<String, AttributeInfo> getRequestedAttributes(University university) {
         Map<Version, Optional<ClaimSchema>> claimSchemaLookup = getProofAttributes()
                 .stream()
                 .flatMap(proofAttribute -> proofAttribute.getSchemaVersions().stream())
                 .distinct()
-                .collect(Collectors.toMap(v -> v, v -> findClaimSchema(universityId, v)));
+                .collect(Collectors.toMap(v -> v, v -> findClaimSchema(university.getId(), v)));
 
         return getProofAttributes()
                 .stream()
                 .collect(Collectors.toMap(
                         ProofAttribute::getFieldName,
-                        proofAttribute -> getAttributeInfo(proofAttribute, claimSchemaLookup))
+                        proofAttribute -> getAttributeInfo(proofAttribute, claimSchemaLookup, university.getName()))
                 );
     }
 
-    private AttributeInfo getAttributeInfo(ProofAttribute proofAttribute, Map<Version, Optional<ClaimSchema>> claimSchemaLookup) {
+    private AttributeInfo getAttributeInfo(ProofAttribute proofAttribute, Map<Version, Optional<ClaimSchema>> claimSchemaLookup, String universityName) {
         List<Version> versions = proofAttribute.getSchemaVersions();
         if (versions.isEmpty()) {
             return new AttributeInfo(proofAttribute.getAttributeName(), Optional.empty());
@@ -184,24 +185,24 @@ public abstract class ProofHandler<T extends Proof> {
         List<Filter> filters = versions
                 .stream()
                 .map(claimSchemaLookup::get)
-                .flatMap(this::createFilter)
+                .flatMap(entry -> createFilter(entry, universityName))
                 .collect(Collectors.toList());
         Validate.notEmpty(filters, "No claim issuers found for field '%s'.", proofAttribute.getField());
         return new AttributeInfo(proofAttribute.getAttributeName(), Optional.of(filters));
     }
 
-    private Stream<Filter> createFilter(Optional<ClaimSchema> claimSchema) {
+    private Stream<Filter> createFilter(Optional<ClaimSchema> claimSchema, String universityName) {
         return claimSchema
-                .map(this::createFilter)
+                .map(claimSchema1 -> createFilter(claimSchema1, universityName))
                 .orElseGet(Stream::empty);
     }
 
-    private Stream<Filter> createFilter(ClaimSchema claimSchema) {
-        SchemaKey schemaKey = ServiceUtils.convertToSchemaKey(claimSchema);
+    private Stream<Filter> createFilter(ClaimSchema claimSchema, String universityName) {
+
         return claimSchema
                 .getClaimIssuers()
                 .stream()
-                .map(claimIssuer -> new Filter(claimSchema.getCredentialDefId()));
+                .map(claimIssuer ->  new Filter(Optional.empty(), Optional.of(claimSchema.getSchemaName()), Optional.of(claimSchema.getSchemaVersion())));
     }
 
 

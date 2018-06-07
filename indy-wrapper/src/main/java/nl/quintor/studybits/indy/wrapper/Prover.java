@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.dto.*;
+import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.anoncreds.Anoncreds;
@@ -62,8 +63,10 @@ public class Prover extends WalletOwner {
      */
     public CompletableFuture<Proof> fulfillProofRequest(ProofRequest proofRequest, Map<String, String> attributes) throws JsonProcessingException, IndyException {
         log.debug("{} Proving proof request: {}", name, proofRequest.toJSON());
+        ;
 
-        return Anoncreds.proverGetCredentialsForProofReq(wallet.getWallet(), proofRequest.toJSON())
+        return findAllCredentials().thenAccept(credentialInfos -> log.debug("{} All credentials available: {}", name, credentialInfos))
+        .thenCompose(AsyncUtil.wrapException(_void -> Anoncreds.proverGetCredentialsForProofReq(wallet.getWallet(), proofRequest.toJSON())
                 .thenApply(wrapException(credentialsForProofReqJson -> {
                     log.debug("{}: Obtained credentials for proof request {}", name, credentialsForProofReqJson);
                     return JSONUtil.mapper.readValue(credentialsForProofReqJson, CredentialsForRequest.class);
@@ -72,7 +75,7 @@ public class Prover extends WalletOwner {
                 .thenApply(wrapException(proof -> {
                     log.debug("{}: Created proof {}", name, proof.toJSON());
                     return proof;
-                }));
+                }))));
     }
 
     CompletableFuture<Proof> createProofFromCredentials(ProofRequest proofRequest, CredentialsForRequest credentialsForRequest, Map<String, String> attributes, String theirDid) throws JsonProcessingException {
@@ -130,6 +133,8 @@ public class Prover extends WalletOwner {
         // 2. The referent is for an attribute and no value is provided -> Find any
         // 3. The referent is for a predicate -> Find any
 
+        log.info("{} Finding needed credental referents for proof request {} with credentials for request {} and attributes {}", name, proofRequest, credentialsForRequest, attributes);
+
         return Stream.<Optional<AbstractMap.SimpleEntry<String, CredentialReferent>>>concat(credentialsForRequest.getAttrs()
                 .entrySet()
                 .stream()
@@ -160,6 +165,7 @@ public class Prover extends WalletOwner {
     }
 
     private JsonNode createRequestedCredentialsJson(ProofRequest proofRequest, Map<String, String> selfAttestedAttributes, Map<String, CredentialReferent> credentialByReferentKey) {
+        log.info("{} Creating requested credentials json with: proof request {}, selfAttestedAttributes {}, credentialByReferentKey {}", name, proofRequest, selfAttestedAttributes, credentialByReferentKey);
         Map<String, ProvingCredentialKey> requestedAttributes = proofRequest.getRequestedAttributes()
                 .entrySet()
                 .stream()
@@ -167,13 +173,20 @@ public class Prover extends WalletOwner {
                         .getRestrictions()
                         .isPresent())
                 .collect(Collectors.toMap(Map.Entry::getKey, entry ->
-                        new ProvingCredentialKey(credentialByReferentKey.get(entry.getKey()).getCredentialInfo().getReferent(), Optional.of(true))));
+                {
+                    log.debug("{} Creating ProvingCredential key from entry {}", name, entry);
+                    return new ProvingCredentialKey(credentialByReferentKey.get(entry.getKey()).getCredentialInfo().getReferent(), Optional.of(true));
+                }));
 
+        log.debug("{} Creating stuff for predicates", name);
         Map<String, ProvingCredentialKey> requestedPredicates = proofRequest.getRequestedPredicates()
                 .entrySet()
                 .stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> new ProvingCredentialKey(credentialByReferentKey.get(entry.getKey())
-                        .getCredentialInfo().getReferent(), Optional.empty())));
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                    log.debug("{} Creating ProvingCredential for predicate key from entry {}", name, entry);
+                    return new ProvingCredentialKey(credentialByReferentKey.get(entry.getKey())
+                            .getCredentialInfo().getReferent(), Optional.empty());
+                }));
 
         ObjectNode requestedCredentialJson = JSONUtil.mapper.createObjectNode();
 
@@ -185,6 +198,7 @@ public class Prover extends WalletOwner {
 
 
     public CompletableFuture<String> storeCredential(CredentialWithRequest credentialWithRequest) throws JsonProcessingException, IndyException {
+        log.debug("{} Storing credential: {}", name, credentialWithRequest.getCredential());
         Credential credential = credentialWithRequest.getCredential();
         return getCredentialDef(wallet.getMainDid(), credential.getCredDefId())
                 .thenCompose(wrapException(

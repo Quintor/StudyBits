@@ -1,6 +1,7 @@
 package nl.quintor.studybits.student.services;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.Prover;
 import nl.quintor.studybits.indy.wrapper.dto.AuthcryptedMessage;
 import nl.quintor.studybits.indy.wrapper.dto.ProofRequest;
@@ -26,6 +27,7 @@ import java.util.stream.Stream;
 
 @Service
 @AllArgsConstructor(onConstructor = @__(@Autowired))
+@Slf4j
 public class ProofRequestService {
 
     private ProofRequestRecordRepository proofRequestRecordRepository;
@@ -88,7 +90,10 @@ public class ProofRequestService {
                 .getForObject(requestInfo.getLink("self").getHref(), AuthEncryptedMessageModel.class);
 
         AuthEncryptedMessageModel model = prover.authDecrypt(mapper.map(response, AuthcryptedMessage.class), ProofRequest.class)
-                .thenCompose(AsyncUtil.wrapException(proofRequest -> prover.fulfillProofRequest(proofRequest, new HashMap<>())))
+                .thenCompose(AsyncUtil.wrapException(proofRequest -> {
+                    log.info("Fulfilling proof request: {}", proofRequest);
+                    return prover.fulfillProofRequest(proofRequest, new HashMap<>());
+                }))
                 .thenCompose(AsyncUtil.wrapException(prover::authEncrypt))
                 .thenApply(authcryptedMessage -> mapper.map(authcryptedMessage, AuthEncryptedMessageModel.class))
                 .get();

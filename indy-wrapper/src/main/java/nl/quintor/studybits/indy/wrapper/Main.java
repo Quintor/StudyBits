@@ -87,7 +87,8 @@ public class Main {
         System.out.println(credentialInfos);
 
 
-        List<Filter> transcriptFilter = Collections.singletonList(new Filter(transcriptCredentialDefId));
+        List<Filter> transcriptFilter = Collections.singletonList(new Filter(Optional.of(transcriptCredentialDefId), Optional.empty(), Optional.empty()));
+        List<Filter> transcriptFilterByNameAndVersion = Collections.singletonList(new Filter(Optional.empty(), Optional.of("Transcript"), Optional.of("1.2")));
         ProofRequest jobApplicationProofRequest = ProofRequest.builder()
                                                               .name("Job-Application")
                                                               .nonce("1432422343242122312411212")
@@ -96,7 +97,7 @@ public class Main {
                                                               .requestedAttribute("attr2_referent", new AttributeInfo("last_name", Optional.empty()))
                                                               .requestedAttribute("attr3_referent", new AttributeInfo("degree", Optional.of(transcriptFilter)))
                                                               .requestedAttribute("attr4_referent", new AttributeInfo("status", Optional.of(transcriptFilter)))
-                                                              .requestedAttribute("attr5_referent", new AttributeInfo("ssn", Optional.of(transcriptFilter)))
+                                                              .requestedAttribute("attr5_referent", new AttributeInfo("ssn", Optional.of(transcriptFilterByNameAndVersion)))
                                                               .requestedAttribute("attr6_referent", new AttributeInfo("phone_number", Optional.empty()))
                                                               .requestedPredicate("predicate1_referent", new PredicateInfo("average", ">=", 4, Optional.of(transcriptFilter)))
                                                               .build();

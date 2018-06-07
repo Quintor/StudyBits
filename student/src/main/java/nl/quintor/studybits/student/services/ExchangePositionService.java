@@ -88,6 +88,7 @@ public class ExchangePositionService {
                 AuthEncryptedMessageModel messageModel = proofRequestService.getProofForProofRequest(student, prover, proofRequestInfo);
                 return proofRequestService.sendProofToUniversity(messageModel);
             } catch (Exception e) {
+                log.warn("Exception when sending proof to uni", e);
                 return false;
             }
         });

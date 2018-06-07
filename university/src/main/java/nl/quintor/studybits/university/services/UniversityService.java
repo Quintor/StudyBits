@@ -12,6 +12,7 @@ import nl.quintor.studybits.university.dto.Claim;
 import nl.quintor.studybits.university.dto.ClaimIssuerSchema;
 import nl.quintor.studybits.university.dto.UniversityIssuer;
 import nl.quintor.studybits.university.entities.*;
+import nl.quintor.studybits.university.models.SchemaDefinitionModel;
 import nl.quintor.studybits.university.repositories.*;
 import org.apache.commons.lang3.Validate;
 import org.dozer.Mapper;
@@ -19,12 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
-import java.sql.SQLOutput;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -75,7 +73,6 @@ public class UniversityService {
         List<String> definedSchemaIds = university
                 .getClaimSchemas()
                 .stream()
-                .filter(schema -> schema.getCredentialDefId() != null)
                 .map(ClaimSchema::getSchemaId)
                 .collect(Collectors.toList());
         Issuer issuer = getIssuer(university.getName());
@@ -105,7 +102,7 @@ public class UniversityService {
 
     @SneakyThrows
     @Transactional
-    public void defineClaim(String universityName, SchemaDefinition schemaDefinition) {
+    public String defineClaim(String universityName, SchemaDefinition schemaDefinition) {
         ClaimSchema claimSchema = getClaimSchema(universityName, schemaDefinition);
         Validate.isTrue(claimSchema.getCredentialDefId() == null, "Claim already defined.");
 
@@ -113,8 +110,8 @@ public class UniversityService {
         String credentialDefId = issuer.defineCredential(claimSchema.getSchemaId()).get();
         claimSchema.setCredentialDefId(credentialDefId);
         claimSchemaRepository.save(claimSchema);
+        return credentialDefId;
     }
-
 
     public SchemaKey getSchemaKey(String universityName, SchemaDefinition schemaDefinition) {
         ClaimSchema claimSchema = getClaimSchema(universityName, schemaDefinition);
@@ -231,22 +228,24 @@ public class UniversityService {
                 .orElseThrow(() -> new IllegalArgumentException("Schema key not found."));
     }
 
-    public List<SchemaDefinition> getSchemaDefinitions(String universityName) {
+    public List<SchemaDefinitionModel> getSchemaDefinitions(String universityName) {
         Issuer issuer = getIssuer(universityName);
-        log.info("Getting schema definitions");
+        log.info("Getting schema definitions for university: {}", universityName);
         return getUniversityIssuer(universityName)
-                .getDefinedSchemaIds()
+                .getSchemaIds()
                 .stream()
                 .peek(log::info)
                 .map(schemaKey -> getSchemaDefinitionFromSchemaId(issuer, schemaKey))
+                .peek(schemaDef -> log.info("Schema def: {}", schemaDef))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
-    public static SchemaDefinition getSchemaDefinitionFromSchemaId(Issuer issuer, String schemaId) {
+
+    public static SchemaDefinitionModel getSchemaDefinitionFromSchemaId(Issuer issuer, String schemaId) {
         try {
             Schema schema = issuer.getSchema(issuer.getIssuerDid(), schemaId).get();
-            return new SchemaDefinition(schema.getName(), schema.getVersion(), schema.getAttrNames());
+            return new SchemaDefinitionModel(schemaId, schema.getName(), schema.getVersion(), new HashSet<String>(schema.getAttrNames()));
         } catch (Exception e) {
             log.error("{}, Could not get SchemaDefinition for SchemaKey {}", e, schemaId);
             return null;

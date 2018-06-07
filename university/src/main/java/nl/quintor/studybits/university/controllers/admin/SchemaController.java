@@ -1,6 +1,7 @@
 package nl.quintor.studybits.university.controllers.admin;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.dto.SchemaDefinition;
 import nl.quintor.studybits.university.UserContext;
 import nl.quintor.studybits.university.entities.SchemaDefinitionRecord;
@@ -18,22 +19,26 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/{universityName}/admin/{userName}/schemas")
 @AllArgsConstructor(onConstructor = @__(@Autowired))
+@Slf4j
 public class SchemaController {
 
     private final UniversityService universityService;
     private final UserContext userContext;
     private final Mapper mapper;
 
-    private SchemaDefinitionModel toModel(SchemaDefinition definition) {
-        return mapper.map(definition, SchemaDefinitionModel.class);
-    }
-
     @GetMapping
     List<SchemaDefinitionModel> getSchemaDefinitions() {
-        return universityService
+        List<SchemaDefinitionModel> schemaDefinitionModels = universityService
                 .getSchemaDefinitions(userContext.currentUniversityName())
                 .stream()
-                .map(this::toModel)
+                .peek(schemaDef -> log.info("SchemaDef retrieved: {}", schemaDef))
+                .distinct()
+                .peek(model -> log.info("Model retrieved: {}", model))
                 .collect(Collectors.toList());
+//
+//        log.info("0: {}, 1: {}, 2: {}, 3: {}", schemaDefinitionModels.get(0), schemaDefinitionModels.get(1), schemaDefinitionModels.get(2), schemaDefinitionModels.get(3));
+//        log.info("Compare 0 and 1: {}", schemaDefinitionModels.get(0).equals(schemaDefinitionModels.get(1)));
+//        log.info("Compare 0 and 2: {}", schemaDefinitionModels.get(0).equals(schemaDefinitionModels.get(2)));
+        return schemaDefinitionModels;
     }
 }

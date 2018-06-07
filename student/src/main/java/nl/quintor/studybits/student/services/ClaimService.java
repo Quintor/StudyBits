@@ -60,7 +60,7 @@ public class ClaimService {
                             ClaimOfferModel claimOffer = getClaimOfferForClaimInfo(claimInfo, prover);
                             CredentialWithRequest claim = getClaimFromUniversity(claimOffer, prover);
 
-                            prover.storeCredential(claim);
+                            prover.storeCredential(claim).get();
                             saveClaimIfNew(claim.getCredential(), student, claimInfo);
                         } catch (Exception e) {
                             log.error(e.getMessage());
