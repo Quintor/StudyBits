@@ -42,14 +42,6 @@ public class ClaimEntity {
     @Column(nullable = false)
     private String signatureCorrectnessProof;
 
-//    @Column(nullable = false)
-//    private String issuerDid;
-
-//    private String myDid;
-//
-//    @Column(nullable = false)
-//    private String theirDid;
-
     @Override
     public String toString() {
         return "ClaimEntity{" +
@@ -61,9 +53,6 @@ public class ClaimEntity {
                 ", values='" + values + '\'' +
                 ", signature='" + signature + '\'' +
                 ", signatureCorrectnessProof='" + signatureCorrectnessProof + '\'' +
-//                ", issuerDid='" + issuerDid + '\'' +
-//                ", myDid='" + myDid + '\'' +
-//                ", theirDid='" + theirDid + '\'' +
                 '}';
     }
 }

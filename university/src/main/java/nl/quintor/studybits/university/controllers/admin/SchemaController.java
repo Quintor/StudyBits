@@ -28,17 +28,10 @@ public class SchemaController {
 
     @GetMapping
     List<SchemaDefinitionModel> getSchemaDefinitions() {
-        List<SchemaDefinitionModel> schemaDefinitionModels = universityService
+        return universityService
                 .getSchemaDefinitions(userContext.currentUniversityName())
                 .stream()
-                .peek(schemaDef -> log.info("SchemaDef retrieved: {}", schemaDef))
                 .distinct()
-                .peek(model -> log.info("Model retrieved: {}", model))
                 .collect(Collectors.toList());
-//
-//        log.info("0: {}, 1: {}, 2: {}, 3: {}", schemaDefinitionModels.get(0), schemaDefinitionModels.get(1), schemaDefinitionModels.get(2), schemaDefinitionModels.get(3));
-//        log.info("Compare 0 and 1: {}", schemaDefinitionModels.get(0).equals(schemaDefinitionModels.get(1)));
-//        log.info("Compare 0 and 2: {}", schemaDefinitionModels.get(0).equals(schemaDefinitionModels.get(2)));
-        return schemaDefinitionModels;
     }
 }
