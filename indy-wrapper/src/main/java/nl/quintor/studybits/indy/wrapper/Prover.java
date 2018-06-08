@@ -68,7 +68,7 @@ public class Prover extends WalletOwner {
         return findAllCredentials().thenAccept(credentialInfos -> log.debug("{} All credentials available: {}", name, credentialInfos))
         .thenCompose(AsyncUtil.wrapException(_void -> Anoncreds.proverGetCredentialsForProofReq(wallet.getWallet(), proofRequest.toJSON())
                 .thenApply(wrapException(credentialsForProofReqJson -> {
-                    log.debug("{}: Obtained credentials for proof request {}", name, credentialsForProofReqJson);
+                    log.trace("{}: Obtained credentials for proof request {}", name, credentialsForProofReqJson);
                     return JSONUtil.mapper.readValue(credentialsForProofReqJson, CredentialsForRequest.class);
                 }))
                 .thenCompose(wrapException(credentialsForRequest -> createProofFromCredentials(proofRequest, credentialsForRequest, attributes, proofRequest.getTheirDid())))

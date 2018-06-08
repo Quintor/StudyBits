@@ -161,11 +161,11 @@ public class ClaimService {
     }
 
     private AuthEncryptedMessageModel getEncryptedClaimRequestForClaimOffer(CredentialOffer claimOffer, Prover prover) throws Exception {
-        log.debug("Creating ClaimRequest with claimOffer {}", claimOffer);
+        log.trace("Creating ClaimRequest with claimOffer {}", claimOffer);
         return prover.createCredentialRequest(claimOffer)
                 .thenCompose(
                         AsyncUtil.wrapException(claimRequest -> {
-                            log.debug("AuthEncrypting ClaimRequest {} with Prover.", claimRequest);
+                            log.trace("AuthEncrypting ClaimRequest {} with Prover.", claimRequest);
                             return prover.authEncrypt(claimRequest);
                         })
                 )

@@ -45,7 +45,7 @@ public class Issuer extends TrustAnchor {
 
         return Ledger.buildSchemaRequest(getIssuerDid(), createSchemaResult.getSchemaJson())
                      .thenCompose(wrapException(request -> {
-                         log.debug("{}: Submitting buildSchema request {}", this.name, request);
+                         log.trace("{}: Submitting buildSchema request {}", this.name, request);
                          return signAndSubmitRequest(request, getIssuerDid());
                      }))
                      .thenApply(requestResponse -> createSchemaResult.getSchemaId());
@@ -61,11 +61,11 @@ public class Issuer extends TrustAnchor {
                 .thenCompose(wrapException(createAndStoreCredentialDefResult -> {
                     return Ledger.buildCredDefRequest(getIssuerDid(), createAndStoreCredentialDefResult.getCredDefJson())
                             .thenCompose(wrapException(credentialDefRequest -> {
-                                log.debug("{} Signing and sending credentialDefRequest: {}", name, credentialDefRequest);
+                                log.trace("{} Signing and sending credentialDefRequest: {}", name, credentialDefRequest);
                                 return Ledger.signAndSubmitRequest(pool.getPool(), wallet.getWallet(), getIssuerDid(), credentialDefRequest)
                                         ;
                             })).thenApply((response) -> {
-                                        log.debug("{} Got credentialDefRequest response: {}", name, response);
+                                        log.trace("{} Got credentialDefRequest response: {}", name, response);
                                         return createAndStoreCredentialDefResult.getCredDefId();
                                     }
                             );
