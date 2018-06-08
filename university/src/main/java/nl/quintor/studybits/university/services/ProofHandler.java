@@ -3,6 +3,7 @@ package nl.quintor.studybits.university.services;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import nl.quintor.studybits.indy.wrapper.Issuer;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.university.dto.*;
 import nl.quintor.studybits.university.dto.Proof;
@@ -202,7 +203,7 @@ public abstract class ProofHandler<T extends Proof> {
         return claimSchema
                 .getClaimIssuers()
                 .stream()
-                .map(claimIssuer ->  new Filter(Optional.empty(), Optional.of(claimSchema.getSchemaName()), Optional.of(claimSchema.getSchemaVersion())));
+                .map(claimIssuer ->  new Filter(claimSchema.getCredentialDefId()));
     }
 
 

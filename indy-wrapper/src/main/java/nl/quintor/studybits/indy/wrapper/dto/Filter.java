@@ -14,10 +14,5 @@ import java.util.Optional;
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Filter implements Serializable {
     @JsonProperty( "cred_def_id" )
-    private Optional<String> credDefId;
-
-    @JsonProperty("schema_name")
-    private Optional<String> schemaName;
-    @JsonProperty("schema_version")
-    private Optional<String> schemaVersion;
+    private String credDefId;
 }
