@@ -131,7 +131,7 @@ public class WalletOwner implements AutoCloseable {
     }
 
     public CompletableFuture<AnoncryptedMessage> anonEncrypt(AnonCryptable message) throws JsonProcessingException, IndyException {
-        log.debug("{} Anoncrypting message: {}, with did: {}", name, message.toJSON(), message.getTheirDid());
+        log.trace("{} Anoncrypting message: {}, with did: {}", name, message.toJSON(), message.getTheirDid());
         return getKeyForDid(message.getTheirDid())
                 .thenCompose(wrapException((String key) -> {
                     log.debug("{} Anoncrypting with key: {}", name, key);
@@ -148,7 +148,7 @@ public class WalletOwner implements AutoCloseable {
     }
 
     public CompletableFuture<AuthcryptedMessage> authEncrypt(AuthCryptable message) throws JsonProcessingException, IndyException {
-        log.debug("{} Authcrypting message: {}, theirDid: {}", name, message.toJSON(), message.getTheirDid());
+        log.trace("{} Authcrypting message: {}, theirDid: {}", name, message.toJSON(), message.getTheirDid());
         return getKeyForDid(message.getTheirDid()).thenCompose(wrapException((String theirKey) -> {
             return getPairwiseByTheirDid(message.getTheirDid())
                     .thenCompose(wrapException((GetPairwiseResult getPairwiseResult) -> getKeyForDid(getPairwiseResult.getMyDid())
