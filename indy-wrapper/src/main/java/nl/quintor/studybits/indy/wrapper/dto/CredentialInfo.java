@@ -23,8 +23,8 @@ public class CredentialInfo {
     private Map<String, String> attrs;
 
     @JsonProperty( "rev_reg_id" )
-    private Integer revRegId;
+    private Integer revocationRegistryId;
 
     @JsonProperty("cred_rev_id")
-    private Integer credRevId;
+    private Integer credentialRevocationId;
 }

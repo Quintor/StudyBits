@@ -17,7 +17,7 @@ public class CredentialOffer implements Serializable, AuthCryptable {
     @JsonProperty("schema_id")
     private String schemaId;
     @JsonProperty("cred_def_id")
-    private String credDefId;
+    private String credentialDefinitionId;
     @JsonProperty("key_correctness_proof")
     private JsonNode keyCorrectnessProof;
 

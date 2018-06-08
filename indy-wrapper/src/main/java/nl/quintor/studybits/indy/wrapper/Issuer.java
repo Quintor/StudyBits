@@ -55,10 +55,9 @@ public class Issuer extends TrustAnchor {
         log.debug("{}: Defining credential for schemaId {}", name, schemaId);
         return getSchema(getIssuerDid(), schemaId)
                 .thenCompose(wrapException(schema ->
-                {
-                    return Anoncreds.issuerCreateAndStoreCredentialDef(wallet.getWallet(), getIssuerDid(), schema.toJSON(), name + "_" + schemaId, "CL", "{\"support_revocation\":false}");
-                }))
+                        Anoncreds.issuerCreateAndStoreCredentialDef(wallet.getWallet(), getIssuerDid(), schema.toJSON(), name + "_" + schemaId, "CL", "{\"support_revocation\":false}")))
                 .thenCompose(wrapException(createAndStoreCredentialDefResult -> {
+                    log.trace("{} Recieved credentialJson {}", name, createAndStoreCredentialDefResult.getCredDefJson());
                     return Ledger.buildCredDefRequest(getIssuerDid(), createAndStoreCredentialDefResult.getCredDefJson())
                             .thenCompose(wrapException(credentialDefRequest -> {
                                 log.trace("{} Signing and sending credentialDefRequest: {}", name, credentialDefRequest);

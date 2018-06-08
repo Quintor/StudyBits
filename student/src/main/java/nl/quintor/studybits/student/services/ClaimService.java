@@ -175,7 +175,7 @@ public class ClaimService {
 
     @SneakyThrows
     private <T extends AuthCryptable> CompletableFuture<T> decryptAuthcryptedMessage(AuthcryptedMessage authMessage, Prover prover, Class<T> type) {
-        log.debug("Decrypting AuthcryptedMessage {} with prover {} to class {}", authMessage, prover, type);
+        log.trace("Decrypting AuthcryptedMessage {} with prover {} to class {}", authMessage, prover, type);
         return prover.authDecrypt(authMessage, type);
     }
 

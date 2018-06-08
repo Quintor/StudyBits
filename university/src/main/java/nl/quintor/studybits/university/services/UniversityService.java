@@ -140,7 +140,7 @@ public class UniversityService {
         Issuer issuer = getIssuer(universityName);
         ClaimSchema claimSchema = getClaimSchema(universityName, schemaDefinition);
 
-        log.info("Creating claim offer with credDefId: {}, and did: {}", claimSchema.getCredentialDefId(), indyConnection.getDid());
+        log.info("Creating claim offer with credentialDefinitionId: {}, and did: {}", claimSchema.getCredentialDefId(), indyConnection.getDid());
         CredentialOffer claimOffer = issuer.createCredentialOffer(claimSchema.getCredentialDefId(), indyConnection.getDid()).get();
         AuthcryptedMessage authcryptedMessage = issuer.authEncrypt(claimOffer).get();
         return new AuthCryptableResult<>(claimOffer, authcryptedMessage);

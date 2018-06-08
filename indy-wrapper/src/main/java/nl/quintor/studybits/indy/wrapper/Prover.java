@@ -37,7 +37,7 @@ public class Prover extends WalletOwner {
     public CompletableFuture<CredentialRequest> createCredentialRequest(String theirDid, CredentialOffer credentialOffer) throws IndyException, JsonProcessingException {
         return getPairwiseByTheirDid(theirDid)
                 .thenCompose(wrapException(pairwiseResult -> getSchema(pairwiseResult.getMyDid(), credentialOffer.getSchemaId())
-                        .thenCompose(wrapException(schema -> getCredentialDef(pairwiseResult.getMyDid(), credentialOffer.getCredDefId())))
+                        .thenCompose(wrapException(schema -> getCredentialDef(pairwiseResult.getMyDid(), credentialOffer.getCredentialDefinitionId())))
                         .thenCompose(wrapException(credentialDefJson -> {
                             log.debug("{} creating credential request with credentialDefJson {}", name, credentialDefJson);
                             return Anoncreds.proverCreateCredentialReq(wallet.getWallet(), pairwiseResult.getMyDid(),
