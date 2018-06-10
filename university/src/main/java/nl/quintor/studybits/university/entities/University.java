@@ -34,4 +34,5 @@ public class University {
     @OneToMany(mappedBy = "university", cascade = CascadeType.ALL, orphanRemoval = true)
     @Column(nullable = false)
     private List<ExchangePositionRecord> exchangePositionRecords = new ArrayList<>();
+
 }

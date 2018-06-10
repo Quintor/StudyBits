@@ -3,6 +3,7 @@ package nl.quintor.studybits.indy.wrapper.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import nl.quintor.studybits.indy.wrapper.dto.Proof;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
@@ -34,18 +35,14 @@ public class IntegerEncodingUtil {
         }
     }
 
-    public static boolean validateProofEncoding( List<String> value ) {
-        if ( value.size() != 3 ) {
-            return false;
-        }
-
-        String plainValue = value.get(1);
-        String encoding = value.get(2);
+    public static boolean validateProofEncoding( Proof.RevealedValue value ) {
+        String plainValue = value.getRaw();
+        String encoding = value.getEncoded();
 
         return plainValue.equals(decode(new BigInteger(encoding)));
     }
 
-    public static JsonNode claimValuesFromMap(Map<String, Object> valueMap) throws UnsupportedEncodingException {
+    public static JsonNode credentialValuesFromMap(Map<String, Object> valueMap) throws UnsupportedEncodingException {
         ObjectNode result = JSONUtil.mapper.createObjectNode();
 
         for (Map.Entry<String, Object> entry : valueMap.entrySet()) {

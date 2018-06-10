@@ -1,6 +1,8 @@
 package nl.quintor.studybits.university.controllers.admin;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import nl.quintor.studybits.indy.wrapper.dto.SchemaDefinition;
 import nl.quintor.studybits.university.UserContext;
 import nl.quintor.studybits.university.entities.SchemaDefinitionRecord;
 import nl.quintor.studybits.university.models.SchemaDefinitionModel;
@@ -17,22 +19,19 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/{universityName}/admin/{userName}/schemas")
 @AllArgsConstructor(onConstructor = @__(@Autowired))
+@Slf4j
 public class SchemaController {
 
     private final UniversityService universityService;
     private final UserContext userContext;
     private final Mapper mapper;
 
-    private SchemaDefinitionModel toModel(SchemaDefinitionRecord record) {
-        return mapper.map(record, SchemaDefinitionModel.class);
-    }
-
     @GetMapping
     List<SchemaDefinitionModel> getSchemaDefinitions() {
         return universityService
                 .getSchemaDefinitions(userContext.currentUniversityName())
                 .stream()
-                .map(this::toModel)
+                .distinct()
                 .collect(Collectors.toList());
     }
 }

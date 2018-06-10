@@ -20,17 +20,14 @@ public class ExchangePositionService {
 
     private final UniversityService universityService;
     private final ExchangePositionRepository exchangePositionRepository;
-    private final SchemaDefinitionService schemaDefinitionService;
     private final TranscriptProofService transcriptProofService;
 
     @Transactional
     public ExchangePositionRecord create(ExchangePositionModel model) {
         University university = universityService.getUniversity(model.getUniversityName());
-        SchemaDefinitionRecord schemaDefinitionRecord = schemaDefinitionService.getByNameAndVersion(model.getSchemaDefinitionModel().getName(), model.getSchemaDefinitionModel().getVersion());
-
         ProofRecord proofRecord = transcriptProofService.addProofRequest(university.getUser().getId());
 
-        ExchangePositionRecord record = new ExchangePositionRecord(null, university, schemaDefinitionRecord, proofRecord, model.getState(), model.getAttributes());
+        ExchangePositionRecord record = new ExchangePositionRecord(null, university, model.getSchemaId(), proofRecord, model.getState(), model.getAttributes());
 
         return exchangePositionRepository.save(record);
     }

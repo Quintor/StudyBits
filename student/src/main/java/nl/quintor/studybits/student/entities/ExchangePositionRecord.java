@@ -25,9 +25,8 @@ public class ExchangePositionRecord {
     @JoinColumn(name = "university_id", nullable = false)
     private University university;
 
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "schema_definition_record_id", nullable = false)
-    private SchemaDefinitionRecord schemaDefinitionRecord;
+    @Column(nullable = false)
+    private String schemaId;
 
     @Column(nullable = false)
     private Long proofRecordId;

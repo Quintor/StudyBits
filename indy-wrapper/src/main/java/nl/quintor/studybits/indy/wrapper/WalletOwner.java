@@ -4,18 +4,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.dto.*;
+import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.ProofUtils;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.crypto.Crypto;
 import org.hyperledger.indy.sdk.did.Did;
 import org.hyperledger.indy.sdk.ledger.Ledger;
+import org.hyperledger.indy.sdk.ledger.LedgerResults;
 import org.hyperledger.indy.sdk.pairwise.Pairwise;
 
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static nl.quintor.studybits.indy.wrapper.util.AsyncUtil.wrapException;
@@ -86,35 +89,38 @@ public class WalletOwner implements AutoCloseable {
                 });
     }
 
-    public CompletableFuture<Schema> getSchema(String did, SchemaKey schemaKey) throws JsonProcessingException, IndyException {
-        log.debug("{}: Calling buildGetSchemaRequest with submitter: {} destination {} GetSchema {}", name, did, schemaKey
-                .getDid(), GetSchema.fromSchemaKey(schemaKey).toJSON());
-        return Ledger.buildGetSchemaRequest(did, schemaKey.getDid(), GetSchema.fromSchemaKey(schemaKey).toJSON())
+    public CompletableFuture<Schema> getSchema(String did, String schemaId) throws JsonProcessingException, IndyException {
+        log.debug("{}: Calling buildGetSchemaRequest with submitter: {} schemaId {}", name, did, schemaId);
+        return Ledger.buildGetSchemaRequest(did, schemaId)
                 .thenCompose(wrapException(this::submitRequest))
+                .thenCompose(wrapException(Ledger::parseGetSchemaResponse))
                 .thenApply(wrapException(getSchemaResponse -> {
-                    log.debug("{}: Got schema {} for schemaKey {}", name, getSchemaResponse, schemaKey);
-                    return JSONUtil.readObjectByPointer(getSchemaResponse, "/result", Schema.class);
+                    log.debug("{}: Got schema {} }", name, getSchemaResponse.getObjectJson());
+
+                    return JSONUtil.mapper.readValue(getSchemaResponse.getObjectJson(), Schema.class);
                 }));
     }
 
-    CompletableFuture<String> getClaimDef(String did, Schema schema, String issuerDid) throws IndyException {
-        log.debug("{} Getting claim def with did {} schema with seqNo {} and issuerDid {}", name, did, schema.getSeqNo(), issuerDid);
-        return Ledger.buildGetClaimDefTxn(did, schema.getSeqNo(), "CL", issuerDid)
+    CompletableFuture<CredentialDefinition> getCredentialDef(String did, String id) throws IndyException {
+        log.debug("{} Getting credential def with did {} schema with id {}", name, did, id);
+        return Ledger.buildGetCredDefRequest(did, id)
                 .thenCompose(wrapException(request -> {
-                    log.debug("{} Submitting GetClaimDefTxn {}", name, request);
+                    log.debug("{} Submitting GetCredDefRequest {}", name, request);
                     return submitRequest(request);
                 }))
-                .thenApply(wrapException(response -> JSONUtil.mapper.readTree(response).at("/result").toString()));
+                .thenCompose(AsyncUtil.wrapException(Ledger::parseGetCredDefResponse))
+                .thenApply(LedgerResults.ParseResponseResult::getObjectJson)
+                .thenApply(AsyncUtil.wrapException(object -> JSONUtil.mapper.readValue(object, CredentialDefinition.class)));
     }
 
-    CompletableFuture<EntitiesFromLedger> getEntitiesFromLedger(Map<String, ClaimIdentifier> identifiers) {
-        List<CompletableFuture<EntitiesForClaimReferent>> entityFutures = identifiers.entrySet()
+    CompletableFuture<EntitiesFromLedger> getEntitiesFromLedger(Map<String, CredentialIdentifier> identifiers) {
+        List<CompletableFuture<EntitiesForCredentialReferent>> entityFutures = identifiers.entrySet()
                 .stream()
-                .map(wrapException((Map.Entry<String, ClaimIdentifier> stringClaimIdentifierEntry) -> getSchema(wallet.getMainDid(), stringClaimIdentifierEntry
+                .map(wrapException((Map.Entry<String, CredentialIdentifier> stringCredentialIdentifierEntry) -> getSchema(wallet.getMainDid(), stringCredentialIdentifierEntry
                         .getValue()
-                        .getSchemaKey()).thenCompose(wrapException((Schema schema) -> getClaimDef(wallet.getMainDid(), schema, stringClaimIdentifierEntry
+                        .getSchemaId()).thenCompose(wrapException((Schema schema) -> getCredentialDef(wallet.getMainDid(), stringCredentialIdentifierEntry
                         .getValue()
-                        .getIssuerDid()).thenApply(claimDef -> new EntitiesForClaimReferent(schema, claimDef, stringClaimIdentifierEntry
+                        .getCredDefId()).thenApply(credentialDef -> new EntitiesForCredentialReferent(schema, credentialDef, stringCredentialIdentifierEntry
                         .getKey()))))))
                 .collect(Collectors.toList());
 
@@ -125,7 +131,7 @@ public class WalletOwner implements AutoCloseable {
     }
 
     public CompletableFuture<AnoncryptedMessage> anonEncrypt(AnonCryptable message) throws JsonProcessingException, IndyException {
-        log.debug("{} Anoncrypting message: {}, with did: {}", name, message.toJSON(), message.getTheirDid());
+        log.trace("{} Anoncrypting message: {}, with did: {}", name, message.toJSON(), message.getTheirDid());
         return getKeyForDid(message.getTheirDid())
                 .thenCompose(wrapException((String key) -> {
                     log.debug("{} Anoncrypting with key: {}", name, key);
@@ -142,7 +148,7 @@ public class WalletOwner implements AutoCloseable {
     }
 
     public CompletableFuture<AuthcryptedMessage> authEncrypt(AuthCryptable message) throws JsonProcessingException, IndyException {
-        log.debug("{} Authcrypting message: {}, theirDid: {}", name, message.toJSON(), message.getTheirDid());
+        log.trace("{} Authcrypting message: {}, theirDid: {}", name, message.toJSON(), message.getTheirDid());
         return getKeyForDid(message.getTheirDid()).thenCompose(wrapException((String theirKey) -> {
             return getPairwiseByTheirDid(message.getTheirDid())
                     .thenCompose(wrapException((GetPairwiseResult getPairwiseResult) -> getKeyForDid(getPairwiseResult.getMyDid())
@@ -172,7 +178,10 @@ public class WalletOwner implements AutoCloseable {
     }
 
     public CompletableFuture<List<ProofAttribute>> getVerifiedProofAttributes(ProofRequest proofRequest, Proof proof) {
-        return getEntitiesFromLedger(proof.getIdentifiers())
+        Map<String, CredentialIdentifier> identifierMap = proof.getIdentifiers()
+                .stream()
+                .collect(Collectors.toMap(CredentialIdentifier::getCredDefId, Function.identity()));
+        return getEntitiesFromLedger(identifierMap)
                 .thenCompose(wrapException(entitiesFromLedger -> ProofUtils.extractVerifiedProofAttributes(proofRequest, proof, entitiesFromLedger)));
     }
 

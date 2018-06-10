@@ -11,11 +11,13 @@ import lombok.Setter;
 @AllArgsConstructor
 @Data
 @NoArgsConstructor
-public class ClaimOffer implements Serializable, AuthCryptable {
+public class CredentialOffer implements Serializable, AuthCryptable {
     @JsonProperty("issuer_did")
     private String issuerDid;
-    @JsonProperty("schema_key")
-    private SchemaKey schemaKey;
+    @JsonProperty("schema_id")
+    private String schemaId;
+    @JsonProperty("cred_def_id")
+    private String credentialDefinitionId;
     @JsonProperty("key_correctness_proof")
     private JsonNode keyCorrectnessProof;
 

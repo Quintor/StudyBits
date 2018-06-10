@@ -1,21 +1,20 @@
 package nl.quintor.studybits.indy.wrapper.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
-@Data
 @AllArgsConstructor
+@Data
 @NoArgsConstructor
-public class Schema implements Serializable {
-    private String id;
-    private String name;
-    private String ver;
-    private String version;
-    private List<String> attrNames;
-    private int seqNo;
+public class CredentialRequest implements Serializable, AuthCryptable {
+    private String request;
+    private String metadata;
+    private CredentialOffer credentialOffer;
+
+    @JsonIgnore
+    private String theirDid;
 }

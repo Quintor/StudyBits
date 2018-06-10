@@ -25,9 +25,8 @@ public class ExchangePositionRecord {
     @JoinColumn(name = "university_id")
     private University university;
 
-    @ManyToOne(cascade = CascadeType.MERGE)
-    @JoinColumn(name = "schema_definition_record_id", nullable = false)
-    private SchemaDefinitionRecord schemaDefinitionRecord;
+    @Column(nullable = false)
+    private String schemaId;
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "proof_record_id", nullable = false)

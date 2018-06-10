@@ -12,7 +12,7 @@ import javax.persistence.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "schemaKey_id", "label"}))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "schemaId", "label"}))
 public class ClaimEntity {
     @Id
     @GeneratedValue
@@ -22,9 +22,8 @@ public class ClaimEntity {
     @JoinColumn(name = "student_id")
     private Student student;
 
-    @ManyToOne(cascade = CascadeType.MERGE, optional = false)
-    @JoinColumn(name = "schemaKey_id")
-    private SchemaKey schemaKey;
+    @Column(nullable = false)
+    private String schemaId;
 
     @Column(nullable = false)
     private String label;
@@ -43,13 +42,17 @@ public class ClaimEntity {
     @Column(nullable = false)
     private String signatureCorrectnessProof;
 
-    @Column(nullable = false)
-    private String issuerDid;
-
-    private String myDid;
-
-    @Column(nullable = false)
-    private String theirDid;
-
-
+    @Override
+    public String toString() {
+        return "ClaimEntity{" +
+                "id=" + id +
+                ", student=" + student +
+                ", schemaId='" + schemaId + '\'' +
+                ", label='" + label + '\'' +
+                ", revReqSeqNo=" + revReqSeqNo +
+                ", values='" + values + '\'' +
+                ", signature='" + signature + '\'' +
+                ", signatureCorrectnessProof='" + signatureCorrectnessProof + '\'' +
+                '}';
+    }
 }

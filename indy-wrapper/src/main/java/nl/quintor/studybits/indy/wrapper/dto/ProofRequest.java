@@ -1,6 +1,7 @@
 package nl.quintor.studybits.indy.wrapper.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
@@ -16,8 +17,8 @@ public class ProofRequest implements Serializable, AuthCryptable {
     private String version;
 
     @Singular
-    @JsonProperty( "requested_attrs" )
-    private Map<String, AttributeInfo> requestedAttrs;
+    @JsonProperty( "requested_attributes" )
+    private Map<String, AttributeInfo> requestedAttributes;
 
     @Singular
     @JsonProperty( "requested_predicates" )

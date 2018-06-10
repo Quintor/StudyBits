@@ -124,7 +124,26 @@ public class ExchangeIT extends BaseIT {
         return Arrays.asList(body.as(ExchangePositionModel[].class));
     }
 
+    private String getSchemaDefinitionId(String name) {
+        ResponseBody body = givenCorrectHeaders(UNIVERSITY_URL)
+                .pathParam("universityName", EXCHANGE_UNIVERSITY_NAME)
+                .pathParam("userName", ADMIN_NAME)
+                .log().all()
+                .get("/{universityName}/admin/{userName}/schemas")
+                .then()
+                .contentType(ContentType.JSON)
+                .log().all()
+                .extract()
+                .response()
+                .getBody();
+        List<SchemaDefinitionModel> schemaDefinitionModels = Arrays.asList(body.as(SchemaDefinitionModel[].class));
+
+        return schemaDefinitionModels.stream().filter(schemaDefinitionModel -> schemaDefinitionModel.getName().equals(name)).findAny()
+                .orElseThrow(() -> new IllegalArgumentException("Schema not found")).getId();
+    }
+
     private ExchangePositionModel getTranscriptPositionModel(String exchangeUniversityName, Boolean withFullRequirements) {
+        String transcriptSchemaId = getSchemaDefinitionId("Transcript");
         HashMap<String, String> attributes = new HashMap<>();
         attributes.put("degree", "Bachelor of Science, Marketing");
         attributes.put("status", "graduated");
@@ -134,7 +153,7 @@ public class ExchangeIT extends BaseIT {
 
         return new ExchangePositionModel(
                 exchangeUniversityName,
-                new SchemaDefinitionModel("Transcript", "0.1", null),
+                transcriptSchemaId,
                 null,
                 ExchangePositionState.OPEN,
                 attributes

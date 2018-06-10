@@ -3,7 +3,6 @@ package nl.quintor.studybits.university;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.dto.SchemaDefinition;
-import nl.quintor.studybits.indy.wrapper.dto.SchemaKey;
 import nl.quintor.studybits.university.dto.*;
 import nl.quintor.studybits.university.entities.User;
 import nl.quintor.studybits.university.models.TranscriptModel;
@@ -51,14 +50,14 @@ public class Seeder {
         universityService.create("Gent");
 
         SchemaDefinition enrolmentSchemaDefinition = ClaimUtils.getSchemaDefinition(Enrolment.class);
-        SchemaKey enrolmentSchemaKey = universityService.defineSchema("rug", enrolmentSchemaDefinition);
+        String enrolmentSchemaId = universityService.defineSchema("rug", enrolmentSchemaDefinition);
         universityService.defineClaim("rug", enrolmentSchemaDefinition);
-        universityService.addSchema("gent", enrolmentSchemaKey);
+        universityService.addSchema("gent", enrolmentSchemaId);
 
         SchemaDefinition transcriptSchemaDefinition = ClaimUtils.getSchemaDefinition(Transcript.class);
-        SchemaKey transcriptSchemaKey = universityService.defineSchema("rug", transcriptSchemaDefinition);
+        String transcriptSchemaId = universityService.defineSchema("rug", transcriptSchemaDefinition);
         universityService.defineClaim("rug", transcriptSchemaDefinition);
-        universityService.addSchema("gent", transcriptSchemaKey);
+        universityService.addSchema("gent", transcriptSchemaId);
 
         exchangeUniversityClaimIssuerSchemaInfo("rug", "rug");
         exchangeUniversityClaimIssuerSchemaInfo("gent", "gent");
@@ -68,9 +67,9 @@ public class Seeder {
 
     private void exchangeUniversityClaimIssuerSchemaInfo(String universityName, String universityIssuerName) {
         UniversityIssuer universityIssuer = universityService.getUniversityIssuer(universityIssuerName);
-        universityIssuer.getDefinedSchemaKeys()
-                .forEach(schemaKey -> universityService
-                        .addClaimIssuerForSchema(universityName, new ClaimIssuerSchema(universityIssuerName, universityIssuer.getUniversityDid(), schemaKey)));
+        universityIssuer.getSchemaIds()
+                .forEach(schemaId -> universityService
+                        .addClaimIssuerForSchema(universityName, new ClaimIssuerSchema(universityIssuerName, universityIssuer.getUniversityDid(), schemaId)));
     }
 
 

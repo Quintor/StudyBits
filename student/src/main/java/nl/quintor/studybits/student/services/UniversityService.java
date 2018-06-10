@@ -2,6 +2,8 @@ package nl.quintor.studybits.student.services;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nl.quintor.studybits.indy.wrapper.dto.Schema;
+import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.student.entities.ExchangePositionRecord;
 import nl.quintor.studybits.student.entities.Student;
 import nl.quintor.studybits.student.entities.University;
@@ -14,6 +16,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +24,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UniversityService {
     private UniversityRepository universityRepository;
+    private StudentProverService studentProverService;
     private Mapper mapper;
 
     private University toModel(Object university) {
@@ -109,7 +113,11 @@ public class UniversityService {
         return buildStudentUri(university, student, "claims");
     }
 
-    public URI buildExchangePositionProofRequestUri(University university, Student student, ExchangePositionRecord record) {
-        return buildStudentUri(university, student, String.format("proofrequests/%s/%d", record.getSchemaDefinitionRecord().getName().toLowerCase() + "proof", record.getProofRecordId()));
+    public URI buildExchangePositionProofRequestUri(University university, Student student, ExchangePositionRecord record) throws Exception {
+        String schemaName = studentProverService.withProverForStudent(student, AsyncUtil.wrapException((prover) -> {
+            return prover.getSchema(prover.getWallet().getMainDid(), record.getSchemaId());
+        })).get().getName();
+
+        return buildStudentUri(university, student, String.format("proofrequests/%s/%d", schemaName.toLowerCase() + "proof", record.getProofRecordId()));
     }
 }

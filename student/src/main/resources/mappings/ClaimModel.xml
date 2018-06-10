@@ -15,9 +15,9 @@
             <a>student.originUniversity.name</a>
             <b>issuingUniversityName</b>
         </field>
-        <field type="one-way">
-            <a>schemaKey.name</a>
-            <b>schemaKeyName</b>
+        <field>
+            <a>schemaId</a>
+            <b>schemaId</b>
         </field>
     </mapping>
 </mappings>

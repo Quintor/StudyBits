@@ -88,6 +88,7 @@ public class ExchangePositionService {
                 AuthEncryptedMessageModel messageModel = proofRequestService.getProofForProofRequest(student, prover, proofRequestInfo);
                 return proofRequestService.sendProofToUniversity(messageModel);
             } catch (Exception e) {
+                log.warn("Exception when sending proof to uni", e);
                 return false;
             }
         });
@@ -107,10 +108,8 @@ public class ExchangePositionService {
         ExchangePositionRecord exchangePosition = mapper.map(model, ExchangePositionRecord.class);
 
         University university = universityService.getByName(model.getUniversityName());
-        SchemaDefinitionRecord schemaDefinitionRecord = schemaDefinitionService.fromModel(model.getSchemaDefinitionModel());
 
         exchangePosition.setUniversity(university);
-        exchangePosition.setSchemaDefinitionRecord(schemaDefinitionRecord);
 
         return exchangePosition;
     }

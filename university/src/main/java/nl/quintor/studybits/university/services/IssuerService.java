@@ -67,7 +67,7 @@ public class IssuerService {
         steward.authDecrypt(verinym, Verinym.class)
                 .thenCompose(AsyncUtil.wrapException(steward::acceptVerinymRequest))
                 .get();
-        issuer.init();
+
         return issuer;
     }
 

@@ -21,6 +21,9 @@ public class ClaimSchema {
     @GeneratedValue
     private Long id;
 
+    @Column(nullable = false)
+    private String schemaId;
+
     @ManyToOne(optional = false, cascade = CascadeType.MERGE)
     @JoinColumn(name = "university_id")
     private University university;
@@ -34,8 +37,8 @@ public class ClaimSchema {
     @Column(nullable = false)
     private String schemaIssuerDid;
 
-    @Column(nullable = false)
-    private Boolean claimDefined;
+    @Column
+    private String credentialDefId;
 
     @ElementCollection
     private List<String> attrNames;
@@ -47,11 +50,25 @@ public class ClaimSchema {
     )
     private List<ClaimIssuer> claimIssuers = new ArrayList<>();
 
-    public ClaimSchema(University university, String schemaName, String schemaVersion, String schemaIssuerDid) {
+    public ClaimSchema(String schemaId, University university, String schemaName, String schemaVersion, String schemaIssuerDid) {
+        this.schemaId = schemaId;
         this.university = university;
         this.schemaName = schemaName;
         this.schemaVersion = schemaVersion;
         this.schemaIssuerDid = schemaIssuerDid;
-        this.claimDefined = false;
+    }
+
+    @Override
+    public String toString() {
+        return "ClaimSchema{" +
+                "schemaId='" + schemaId + '\'' +
+                ", university=" + university +
+                ", schemaName='" + schemaName + '\'' +
+                ", schemaVersion='" + schemaVersion + '\'' +
+                ", schemaIssuerDid='" + schemaIssuerDid + '\'' +
+                ", credentialDefId='" + credentialDefId + '\'' +
+                ", attrNames=" + attrNames +
+                ", claimIssuers=" + claimIssuers +
+                '}';
     }
 }

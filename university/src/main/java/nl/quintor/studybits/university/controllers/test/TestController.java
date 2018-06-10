@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.university.Seeder;
 import nl.quintor.studybits.university.repositories.ExchangeApplicationRepository;
-import nl.quintor.studybits.university.repositories.SchemaDefinitionRepository;
 import nl.quintor.studybits.university.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
 
     private final UserRepository userRepository;
-    private final SchemaDefinitionRepository schemaDefinitionRepository;
     private final ExchangeApplicationRepository exchangeApplicationRepository;
     private final Seeder seeder;
 
@@ -29,8 +27,6 @@ public class TestController {
         exchangeApplicationRepository.deleteAll();
         log.debug("Deleting users");
         userRepository.deleteAll();
-        log.debug("Deleting Schema Definitions");
-        schemaDefinitionRepository.deleteAll();
         log.debug("Seeding");
         seeder.seed(false);
     }
