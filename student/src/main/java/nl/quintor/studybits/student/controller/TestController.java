@@ -18,6 +18,7 @@ public class TestController {
     private final ConnectionRecordRepository connectionRecordRepository;
     private final MetaWalletService metaWalletService;
     private final ExchangePositionRepository exchangePositionRepository;
+    private final ExchangeApplicationRepository exchangeApplicationRepository;
     private final ProofRequestRecordRepository proofRequestRecordRepository;
     private final StudentRepository studentRepository;
     private final UniversityRepository universityRepository;
@@ -26,6 +27,8 @@ public class TestController {
     public void nuke() {
         log.info("Deleting claims");
         claimRepository.deleteAll();
+        log.info("Deleting Exchange Applications");
+        exchangeApplicationRepository.deleteAll();
         log.info("Deleting Exchange Positions");
         exchangePositionRepository.deleteAll();
         log.info("Deleting connection records");
