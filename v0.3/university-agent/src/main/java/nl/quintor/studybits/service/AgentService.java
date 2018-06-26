@@ -3,23 +3,21 @@ package nl.quintor.studybits.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.node.TextNode;
 import lombok.extern.slf4j.Slf4j;
-import nl.quintor.studybits.indy.wrapper.IndyWallet;
+import nl.quintor.studybits.entity.Student;
+import nl.quintor.studybits.indy.wrapper.Issuer;
 import nl.quintor.studybits.indy.wrapper.TrustAnchor;
-import nl.quintor.studybits.indy.wrapper.dto.AnoncryptedMessage;
-import nl.quintor.studybits.indy.wrapper.dto.ConnectionRequest;
-import nl.quintor.studybits.indy.wrapper.dto.ConnectionResponse;
-import nl.quintor.studybits.indy.wrapper.dto.Serializable;
+import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import org.apache.commons.lang3.NotImplementedException;
-import org.aspectj.bridge.Message;
 import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -28,7 +26,10 @@ import java.util.concurrent.ExecutionException;
 public class AgentService {
 
     @Autowired
-    private TrustAnchor trustAnchor;
+    private TrustAnchor universityTrustAnchor;
+
+    @Autowired
+    private Issuer universityIssuer;
 
     @Autowired
     private IdentityService identityService;
@@ -36,7 +37,10 @@ public class AgentService {
     @Autowired
     private StudentService studentService;
 
-    public CompletableFuture<MessageEnvelope> processMessage(MessageEnvelope messageEnvelope) throws JsonProcessingException, IndyException {
+    @Autowired
+    private CredentialDefinitionService credentialDefinitionService;
+
+    public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException {
         switch (messageEnvelope.getType()) {
             case CONNECTION_RESPONSE:
                 return handleConnectionResponse(messageEnvelope);
@@ -47,27 +51,47 @@ public class AgentService {
         }
     }
 
-    public CompletableFuture<MessageEnvelope> login(String studentId) throws IndyException, ExecutionException, InterruptedException {
+    public MessageEnvelope login(String studentId) throws IndyException, ExecutionException, InterruptedException {
         identityService.setStudentId(studentId);
-        return trustAnchor.createConnectionRequest(studentId, null)
-                .thenApply(connectionRequest -> {
-                    studentService.setConnectionData(studentId, connectionRequest.getDid(), connectionRequest.getRequestNonce());
+        ConnectionRequest connectionRequest = universityTrustAnchor.createConnectionRequest(studentId, null).get();
 
-                    return this.unencryptedFromSerializable(connectionRequest.getRequestNonce(),
+        studentService.setConnectionData(studentId, connectionRequest.getDid(), connectionRequest.getRequestNonce());
+
+        return this.unencryptedFromSerializable(connectionRequest.getRequestNonce(),
                             MessageEnvelope.MessageType.CONNECTION_REQUEST, connectionRequest);
-                });
+
     }
 
-    private CompletableFuture<MessageEnvelope> handleConnectionResponse(MessageEnvelope messageEnvelope) throws JsonProcessingException, IndyException {
+    public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+        Student student = studentService.getStudentByStudentId(identityService.getStudentId());
+        if (student.getTranscript() != null && !student.getTranscript().isProven()) {
+
+
+            CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
+            AuthcryptedMessage authcryptedMessage = universityIssuer.authEncrypt(credentialOffer).get();
+            return Collections.singletonList(this.fromEncrypted(MessageEnvelope.MessageType.CREDENTIAL_OFFER, authcryptedMessage));
+        }
+
+        return Collections.emptyList();
+    }
+
+    private MessageEnvelope handleConnectionResponse(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException {
         AnoncryptedMessage anoncryptedConnectionResponse = fromEnvelope(messageEnvelope);
-        return trustAnchor.anonDecrypt(anoncryptedConnectionResponse, ConnectionResponse.class)
-                .thenCompose(AsyncUtil.wrapException(trustAnchor::acceptConnectionResponse))
-                // TODO proper connection acknowledgement
-                .thenApply(result -> new MessageEnvelope("", MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT, new TextNode("")));
+        ConnectionResponse connectionResponse = universityTrustAnchor.anonDecrypt(anoncryptedConnectionResponse, ConnectionResponse.class).get();
+
+        studentService.setStudentDid(identityService.getStudentId(), connectionResponse.getDid());
+        universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
+
+        // TODO proper connection acknowledgement
+        return new MessageEnvelope("", MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT, new TextNode(""));
     }
 
     private MessageEnvelope unencryptedFromSerializable(String id, MessageEnvelope.MessageType type, Serializable message) {
         return new MessageEnvelope(id, type, JSONUtil.mapper.valueToTree(message));
+    }
+
+    private MessageEnvelope fromEncrypted(MessageEnvelope.MessageType type, AuthcryptedMessage message) {
+        return new MessageEnvelope(message.getDid(), type, new TextNode(Base64.getEncoder().encodeToString(message.getMessage())));
     }
 
     private AnoncryptedMessage fromEnvelope(MessageEnvelope messageEnvelope) {

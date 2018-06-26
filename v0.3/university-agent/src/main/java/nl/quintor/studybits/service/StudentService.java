@@ -15,7 +15,11 @@ public class StudentService {
 
     @Transactional
     public void setConnectionData(String studentId, String myDid, String requestNonce) {
-        Student student = studentRepository.getOne(studentId);
+        Student student = studentRepository.getStudentByStudentId(studentId);
+
+        if (student == null) {
+            throw new EntityNotFoundException("Student not found for studentId: " + studentId);
+        }
 
         student.setMyDid(myDid);
         student.setRequestNonce(requestNonce);
@@ -23,7 +27,24 @@ public class StudentService {
     }
 
     @Transactional
+    public Student getStudentByStudentId(String studentId) {
+        return studentRepository.getStudentByStudentId(studentId);
+    }
+
+    @Transactional
     public String getMyDidByRequestNonce(String requestNonce) {
         return studentRepository.getStudentByRequestNonce(requestNonce).getMyDid();
+    }
+
+    @Transactional
+    public void setStudentDid(String studentId, String studentDid) {
+        Student student = studentRepository.getStudentByStudentId(studentId);
+
+        if (student == null) {
+            throw new EntityNotFoundException("Student not found for studentId: " + studentId);
+        }
+
+        student.setStudentDid(studentDid);
+        studentRepository.saveAndFlush(student);
     }
 }

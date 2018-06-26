@@ -2,6 +2,8 @@ package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.node.TextNode;
+import io.restassured.filter.log.ResponseLoggingFilter;
+import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
 import nl.quintor.studybits.indy.wrapper.IndyPool;
 import nl.quintor.studybits.indy.wrapper.IndyWallet;
@@ -16,10 +18,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.anoncreds.AnoncredsResults;
 import org.hyperledger.indy.sdk.wallet.Wallet;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
 import java.util.Base64;
@@ -28,18 +28,26 @@ import java.util.concurrent.ExecutionException;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
 import static org.junit.Assert.*;
 
-public class ConnectIT {
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+public class ScenarioIT {
     static final String ENDPOINT = "http://localhost:8080";
     static IndyPool indyPool;
+    static IndyWallet stewardWallet;
+    static IndyWallet studentWallet;
+    static SessionFilter sessionFilter = new SessionFilter();
 
+    static String schemaId;
 
     @BeforeClass
     public static void bootstrapBackend() throws InterruptedException, ExecutionException, IndyException, IOException {
         String poolName = PoolUtils.createPoolLedgerConfig(null, "testPool" + System.currentTimeMillis());
         indyPool = new IndyPool(poolName);
-        TrustAnchor steward = new TrustAnchor(IndyWallet.create(indyPool, "steward_wallet" + System.currentTimeMillis(), "000000000000000000000000Steward1"));
+        stewardWallet = IndyWallet.create(indyPool, "steward_wallet" + System.currentTimeMillis(), "000000000000000000000000Steward1");
+        TrustAnchor steward = new TrustAnchor(stewardWallet);
 
         Issuer university = new Issuer(IndyWallet.create(indyPool, "university_wallet" + System.currentTimeMillis(), StringUtils.leftPad("rug", 32, '0')));
 
@@ -53,19 +61,30 @@ public class ConnectIT {
         steward.anonDecrypt(newcomerConnectionResponse, ConnectionResponse.class)
                 .thenCompose(AsyncUtil.wrapException(steward::acceptConnectionResponse)).get();
 
+        // Create verinym
         AuthcryptedMessage verinym = university.authEncrypt(university.createVerinymRequest(JSONUtil.mapper.readValue(governmentConnectionRequest, ConnectionRequest.class)
                 .getDid()))
                 .get();
 
         steward.authDecrypt(verinym, Verinym.class)
                 .thenCompose(AsyncUtil.wrapException(steward::acceptVerinymRequest)).get();
+
+
+        Issuer stewardIssuer = new Issuer(stewardWallet);
+        schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "degree", "status", "average").get();
+        System.out.println(sessionFilter.getSessionId());
+        givenCorrectHeaders()
+                .when()
+                .post("/bootstrap/credential_definition/{schemaId}", schemaId)
+                .then()
+                .assertThat().statusCode(200);
+
+        studentWallet = IndyWallet.create(indyPool, "student_wallet" + System.currentTimeMillis(), null);
     }
 
 
     @Test
-    public void testConnect() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        IndyWallet studentWallet = IndyWallet.create(indyPool, "student_wallet" + System.currentTimeMillis(), null);
-
+    public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
         MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders()
                 .post("/agent/login/12345678")
                 .then()
@@ -90,11 +109,30 @@ public class ConnectIT {
         assertThat(connectionAcknowledgementEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT)));
     }
 
+    @Test
+    public void test2_obtainingCredential() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+        MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders()
+                .get("/agent/credential_offer")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope[].class);
+
+        assertThat(credentialOfferEnvelopes, arrayWithSize(equalTo(1)));
+
+        AuthcryptedMessage authcryptedCredentialOffer = new AuthcryptedMessage(Base64.getDecoder().decode(credentialOfferEnvelopes[0].getMessage().asText()), credentialOfferEnvelopes[0].getId());
+
+        CredentialOffer credentialOffer = studentWallet.authDecrypt(authcryptedCredentialOffer, CredentialOffer.class).get();
+        assertThat(credentialOffer.getSchemaId(), is(equalTo(schemaId)));
+
+    }
+
 
     static RequestSpecification givenCorrectHeaders() {
         return given()
                 .baseUri(ENDPOINT)
                 .header("Accept", "application/json")
-                .header("Content-type", "application/json");
+                .header("Content-type", "application/json")
+                .filter(sessionFilter)
+                .filter(new ResponseLoggingFilter());
     }
 }
