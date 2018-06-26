@@ -1,0 +1,34 @@
+version: '2.3'
+services:
+  pool:
+    build:
+      context: ci
+      dockerfile: indy-pool.dockerfile
+    ports:
+    - "9701-9708:9701-9708"
+    # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
+    network_mode: "host"
+
+  university-agent:
+    build:
+      context: university-agent
+    command: mvn package spring-boot:run
+    network_mode: "host"
+    depends_on:
+      pool:
+        condition: service_started
+    healthcheck:
+      test: curl -f http://localhost:8080/swagger-ui.html || exit 1
+      interval: 5s
+      timeout: 2s
+      retries: 35
+
+  tests:
+    build:
+      context: university-agent
+    network_mode: "host"
+    command: mvn verify
+    depends_on:
+      university-agent:
+        condition: service_healthy
+
