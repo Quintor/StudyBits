@@ -32,6 +32,11 @@ public class StudentService {
     }
 
     @Transactional
+    public Student getStudentByStudentDid(String studentDid) {
+        return studentRepository.getStudentByStudentDid(studentDid);
+    }
+
+    @Transactional
     public String getMyDidByRequestNonce(String requestNonce) {
         return studentRepository.getStudentByRequestNonce(requestNonce).getMyDid();
     }

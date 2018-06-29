@@ -5,10 +5,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
-import nl.quintor.studybits.indy.wrapper.IndyPool;
-import nl.quintor.studybits.indy.wrapper.IndyWallet;
-import nl.quintor.studybits.indy.wrapper.Issuer;
-import nl.quintor.studybits.indy.wrapper.TrustAnchor;
+import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
@@ -124,6 +121,31 @@ public class ScenarioIT {
         CredentialOffer credentialOffer = studentWallet.authDecrypt(authcryptedCredentialOffer, CredentialOffer.class).get();
         assertThat(credentialOffer.getSchemaId(), is(equalTo(schemaId)));
 
+        Prover prover = new Prover(studentWallet, "master_secret_name");
+        prover.init();
+
+        AuthcryptedMessage authcryptedCredentialRequest = prover.createCredentialRequest(credentialOffer)
+                .thenCompose(AsyncUtil.wrapException(prover::authEncrypt)).get();
+
+        MessageEnvelope authcryptedCredentialRequestEnvelope = new MessageEnvelope(authcryptedCredentialRequest.getDid(), MessageEnvelope.MessageType.CREDENTIAL_REQUEST,
+                new TextNode(Base64.getEncoder().encodeToString(authcryptedCredentialRequest.getMessage())));
+
+        MessageEnvelope credentialEnvelope = givenCorrectHeaders()
+                .body(authcryptedCredentialRequestEnvelope)
+                .post("/agent/message")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope.class);
+
+        assertThat(credentialEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CREDENTIAL)));
+
+        AuthcryptedMessage authcryptedCredential = new AuthcryptedMessage(Base64.getDecoder().decode(credentialEnvelope.getMessage().asText()), credentialEnvelope.getId());
+
+        Credential credential = prover.authDecrypt(authcryptedCredential, CredentialWithRequest.class).get().getCredential();
+
+        assertThat(credential.getValues().get("degree").get("raw").asText(), is(equalTo("Bachelor of Arts, Marketing")));
+        assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
+        assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
     }
 
 

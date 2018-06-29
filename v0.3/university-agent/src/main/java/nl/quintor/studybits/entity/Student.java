@@ -27,7 +27,7 @@ public class Student {
     @Column
     private String requestNonce;
 
-    @Column
+    @Column(unique = true)
     private String studentDid;
 
     @Column

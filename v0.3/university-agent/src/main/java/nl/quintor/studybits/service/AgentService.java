@@ -15,9 +15,8 @@ import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
+import java.io.UnsupportedEncodingException;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -40,11 +39,12 @@ public class AgentService {
     @Autowired
     private CredentialDefinitionService credentialDefinitionService;
 
-    public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException {
+    public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
         switch (messageEnvelope.getType()) {
             case CONNECTION_RESPONSE:
                 return handleConnectionResponse(messageEnvelope);
-
+            case CREDENTIAL_REQUEST:
+                return handleCredentialRequest(messageEnvelope);
             default:
                 throw new NotImplementedException("Processing of message type not supported: " + messageEnvelope.getType());
 
@@ -86,6 +86,22 @@ public class AgentService {
         return new MessageEnvelope("", MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT, new TextNode(""));
     }
 
+    private MessageEnvelope handleCredentialRequest(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
+        AuthcryptedMessage authcryptedCredentialRequest = authcryptedFromEnvelope(messageEnvelope);
+        CredentialRequest credentialRequest = universityTrustAnchor.authDecrypt(authcryptedCredentialRequest, CredentialRequest.class).get();
+        Student student = studentService.getStudentByStudentDid(messageEnvelope.getId());
+
+        Map<String, Object> values = new HashMap<>();
+        values.put("degree", student.getTranscript().getDegree());
+        values.put("average", student.getTranscript().getAverage());
+        values.put("status", student.getTranscript().getStatus());
+
+        AuthcryptedMessage authcryptedCredentialWithRequest = universityIssuer.createCredential(credentialRequest, values)
+                .thenCompose(AsyncUtil.wrapException(universityIssuer::authEncrypt)).get();
+
+        return fromEncrypted(MessageEnvelope.MessageType.CREDENTIAL, authcryptedCredentialWithRequest);
+    }
+
     private MessageEnvelope unencryptedFromSerializable(String id, MessageEnvelope.MessageType type, Serializable message) {
         return new MessageEnvelope(id, type, JSONUtil.mapper.valueToTree(message));
     }
@@ -97,6 +113,11 @@ public class AgentService {
     private AnoncryptedMessage fromEnvelope(MessageEnvelope messageEnvelope) {
         byte[] decodedBytes = Base64.getDecoder().decode(messageEnvelope.getMessage().asText());
         return new AnoncryptedMessage(decodedBytes, studentService.getMyDidByRequestNonce(messageEnvelope.getId()));
+    }
+
+    private AuthcryptedMessage authcryptedFromEnvelope(MessageEnvelope messageEnvelope) {
+        byte[] decodedBytes = Base64.getDecoder().decode(messageEnvelope.getMessage().asText());
+        return new AuthcryptedMessage(decodedBytes, messageEnvelope.getId());
     }
 
 }
