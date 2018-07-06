@@ -4,6 +4,9 @@ services:
     build:
       context: ci
       dockerfile: indy-pool.dockerfile
+      args:
+        pool_ip: $TEST_POOL_IP
+
     ports:
     - "9701-9708:9701-9708"
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
@@ -14,6 +17,9 @@ services:
       context: university-agent
     command: mvn package spring-boot:run
     network_mode: "host"
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
+
     depends_on:
       pool:
         condition: service_started

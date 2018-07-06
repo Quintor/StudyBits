@@ -175,6 +175,8 @@ public class Prover extends WalletOwner {
                 .collect(Collectors.toMap(Map.Entry::getKey, entry ->
                 {
                     log.debug("{} Creating ProvingCredential key from entry {}", name, entry);
+                    log.debug("{} Creating with credential {}", name, credentialByReferentKey.get(entry.getKey()));
+                    log.debug("{} CredentialInfo {}", name, credentialByReferentKey.get(entry.getKey()).getCredentialInfo());
                     return new ProvingCredentialKey(credentialByReferentKey.get(entry.getKey()).getCredentialInfo().getReferent(), Optional.of(true));
                 }));
 
