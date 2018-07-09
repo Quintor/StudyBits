@@ -25,7 +25,7 @@
         </rollingPolicy>
     </appender>
 
-    <logger name="nl.quintor" level="DEBUG"/>
+    <logger name="nl.quintor" level="INFO"/>
     <logger name="org.springframework" level="INFO"/>
     <logger name="org.springframework.transaction" level="WARN"/>
 

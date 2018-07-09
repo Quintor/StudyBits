@@ -145,8 +145,8 @@ public class ExchangeIT extends BaseIT {
     private ExchangePositionModel getTranscriptPositionModel(String exchangeUniversityName, Boolean withFullRequirements) {
         String transcriptSchemaId = getSchemaDefinitionId("Transcript");
         HashMap<String, String> attributes = new HashMap<>();
-        attributes.put("degree", "Bachelor of Science, Marketing");
-        attributes.put("status", "graduated");
+        attributes.put("degree", "Bachelor of Arts, Marketing");
+        attributes.put("status", "enroled");
 
         if (withFullRequirements)
             attributes.put("average", "7");

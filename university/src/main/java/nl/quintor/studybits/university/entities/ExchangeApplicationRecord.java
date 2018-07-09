@@ -27,7 +27,7 @@ public class ExchangeApplicationRecord {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(optional = false, cascade = CascadeType.ALL)
+    @ManyToOne(optional = false, cascade = CascadeType.MERGE)
     @JoinColumn(name = "exchange_position_record_id")
     private ExchangePositionRecord exchangePositionRecord;
 
