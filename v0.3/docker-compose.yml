@@ -19,6 +19,7 @@ services:
     network_mode: "host"
     environment:
     - TEST_POOL_IP=$TEST_POOL_IP
+    - SPRING_PROFILES_ACTIVE=mobile-test
 
     depends_on:
       pool:

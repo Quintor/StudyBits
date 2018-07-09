@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y libindy=$LIBINDY_VERSION
 
 RUN git clone https://github.com/Quintor/quindy.git \
     && cd quindy \
-    && git checkout i90/message-driven-agent \
+    && git checkout 9fe99057c29fd4c4c2e5a89485e8db078ea295af \
     && mvn install -DskipTests
 
 ADD pom.xml /
