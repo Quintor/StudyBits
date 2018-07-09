@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y libindy=$LIBINDY_VERSION
 
 RUN git clone https://github.com/Quintor/quindy.git \
     && cd quindy \
-    && git checkout 9fe99057c29fd4c4c2e5a89485e8db078ea295af \
+    && git checkout 26c0e32b390b599f95ba1937002d76deb075464f \
     && mvn install -DskipTests
 
 ADD pom.xml /
