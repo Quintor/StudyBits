@@ -37,6 +37,7 @@ RUN apt-get update -y && apt-get install -y \
         indy-anoncreds=${indy_anoncreds_ver} \
         indy-node=${indy_node_ver} \
         python3-indy-crypto=${python3_indy_crypto_ver} \
+	    python3-base58=0.2.4 \
         libindy-crypto=${indy_crypto_ver} \
         vim
 
@@ -44,7 +45,7 @@ RUN echo '[supervisord]\n\
 logfile = /tmp/supervisord.log\n\
 logfile_maxbytes = 50MB\n\
 logfile_backups=10\n\
-logLevel = error\n\
+logLevel = info\n\
 pidfile = /tmp/supervisord.pid\n\
 nodaemon = true\n\
 minfds = 1024\n\
