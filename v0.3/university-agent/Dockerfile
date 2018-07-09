@@ -11,14 +11,14 @@ RUN apt-get update \
     && add-apt-repository "deb https://repo.sovrin.org/sdk/deb xenial stable"
 
 # Set the default Libindy version. Will be overwritten when argument is supplied from console
-ARG LIBINDY_VERSION=1.4.0
+ARG LIBINDY_VERSION=1.5.0
 
 # Split off libindy command for fast builds on version bump
 RUN apt-get update && apt-get install -y libindy=$LIBINDY_VERSION
 
 RUN git clone https://github.com/Quintor/quindy.git \
     && cd quindy \
-    && git checkout 26c0e32b390b599f95ba1937002d76deb075464f \
+    && git checkout bb19b88416238b3e4b3259d09cf233b893633077 \
     && mvn install -DskipTests
 
 ADD pom.xml /
