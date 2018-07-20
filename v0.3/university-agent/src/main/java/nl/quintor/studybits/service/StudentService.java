@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
+import java.util.UUID;
 
 @Component
 public class StudentService {
@@ -60,5 +61,13 @@ public class StudentService {
 
         student.setStudentDid(studentDid);
         studentRepository.saveAndFlush(student);
+    }
+
+    @Transactional
+    public Student createStudent() {
+        Student student = new Student();
+        student.setStudentId(UUID.randomUUID().toString());
+
+        return studentRepository.saveAndFlush(student);
     }
 }

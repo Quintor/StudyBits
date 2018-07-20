@@ -56,6 +56,13 @@ public class AgentService {
     }
 
     public MessageEnvelope login(String studentId) throws IndyException, ExecutionException, InterruptedException {
+        Student student = studentService.getStudentByStudentId(studentId);
+
+        if (student == null) {
+            student = studentService.createStudent();
+            studentId = student.getStudentId();
+        }
+
         identityService.setStudentId(studentId);
         ConnectionRequest connectionRequest = universityTrustAnchor.createConnectionRequest(studentId, null).get();
 

@@ -25,7 +25,7 @@ public class AgentController {
     }
 
     @PostMapping("/login")
-    public MessageEnvelope login(@RequestParam("student_id") String studentId) throws InterruptedException, ExecutionException, IndyException {
+    public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId) throws InterruptedException, ExecutionException, IndyException {
         return agentService.login(studentId);
     }
 

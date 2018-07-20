@@ -13,8 +13,6 @@ import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.indy.sdk.IndyException;
-import org.hyperledger.indy.sdk.anoncreds.AnoncredsResults;
-import org.hyperledger.indy.sdk.wallet.Wallet;
 import org.junit.*;
 import org.junit.runners.MethodSorters;
 
@@ -27,11 +25,11 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
-import static org.junit.Assert.*;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ScenarioIT {
-    static final String ENDPOINT = "http://localhost:8080";
+    static final String ENDPOINT_RUG = "http://localhost:8080";
+    static final String ENDPOINT_GENT = "http://localhost:8081";
     static IndyPool indyPool;
     static IndyWallet stewardWallet;
     static IndyWallet studentWallet;
@@ -70,7 +68,7 @@ public class ScenarioIT {
         Issuer stewardIssuer = new Issuer(stewardWallet);
         schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "degree", "status", "average").get();
         System.out.println(sessionFilter.getSessionId());
-        givenCorrectHeaders()
+        givenCorrectHeaders(ENDPOINT_RUG)
                 .when()
                 .post("/bootstrap/credential_definition/{schemaId}", schemaId)
                 .then()
@@ -82,7 +80,7 @@ public class ScenarioIT {
 
     @Test
     public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders()
+        MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .queryParam("student_id", "12345678")
                 .post("/agent/login")
                 .then()
@@ -97,7 +95,7 @@ public class ScenarioIT {
         MessageEnvelope connectionResponseEnvelope = new MessageEnvelope(connectionRequest.getRequestNonce(), MessageEnvelope.MessageType.CONNECTION_RESPONSE,
                 new TextNode(Base64.getEncoder().encodeToString(anoncryptedConnectionResponse.getMessage())));
 
-        MessageEnvelope connectionAcknowledgementEnvelope = givenCorrectHeaders()
+        MessageEnvelope connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(connectionResponseEnvelope)
                 .post("/agent/message")
                 .then()
@@ -109,7 +107,7 @@ public class ScenarioIT {
 
     @Test
     public void test2_obtainingCredential() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders()
+        MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
                 .get("/agent/credential_offer")
                 .then()
                 .assertThat().statusCode(200)
@@ -131,7 +129,7 @@ public class ScenarioIT {
         MessageEnvelope authcryptedCredentialRequestEnvelope = new MessageEnvelope(authcryptedCredentialRequest.getDid(), MessageEnvelope.MessageType.CREDENTIAL_REQUEST,
                 new TextNode(Base64.getEncoder().encodeToString(authcryptedCredentialRequest.getMessage())));
 
-        MessageEnvelope credentialEnvelope = givenCorrectHeaders()
+        MessageEnvelope credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(authcryptedCredentialRequestEnvelope)
                 .post("/agent/message")
                 .then()
@@ -149,10 +147,36 @@ public class ScenarioIT {
         assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
     }
 
+    @Test
+    public void test3_ConnectGent() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+        MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+                .post("/agent/login")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope.class);
 
-    static RequestSpecification givenCorrectHeaders() {
+        ConnectionRequest connectionRequest = JSONUtil.mapper.treeToValue(connectionRequestEnvelope.getMessage(), ConnectionRequest.class);
+
+        AnoncryptedMessage anoncryptedConnectionResponse = studentWallet.acceptConnectionRequest(connectionRequest)
+                .thenCompose(AsyncUtil.wrapException(studentWallet::anonEncrypt)).get();
+
+        MessageEnvelope connectionResponseEnvelope = new MessageEnvelope(connectionRequest.getRequestNonce(), MessageEnvelope.MessageType.CONNECTION_RESPONSE,
+                new TextNode(Base64.getEncoder().encodeToString(anoncryptedConnectionResponse.getMessage())));
+
+        MessageEnvelope connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+                .body(connectionResponseEnvelope)
+                .post("/agent/message")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope.class);
+
+        assertThat(connectionAcknowledgementEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT)));
+    }
+
+
+    static RequestSpecification givenCorrectHeaders(String endpoint) {
         return given()
-                .baseUri(ENDPOINT)
+                .baseUri(endpoint)
                 .header("Accept", "application/json")
                 .header("Content-type", "application/json")
                 .filter(sessionFilter)
