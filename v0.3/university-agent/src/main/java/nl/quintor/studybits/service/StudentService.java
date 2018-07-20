@@ -42,6 +42,15 @@ public class StudentService {
     }
 
     @Transactional
+    public void proveTranscript(String studentId) {
+        Student studentEntity = studentRepository.getStudentByStudentId(
+                studentId
+        );
+        studentEntity.getTranscript().setProven(true);
+        studentRepository.saveAndFlush(studentEntity);
+    }
+
+    @Transactional
     public void setStudentDid(String studentId, String studentDid) {
         Student student = studentRepository.getStudentByStudentId(studentId);
 

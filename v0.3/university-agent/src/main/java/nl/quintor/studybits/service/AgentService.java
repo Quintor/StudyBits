@@ -13,6 +13,7 @@ import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import org.apache.commons.lang3.NotImplementedException;
 import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
@@ -39,6 +40,9 @@ public class AgentService {
     @Autowired
     private CredentialDefinitionService credentialDefinitionService;
 
+    @Value("${nl.quintor.studybits.university.name}")
+    private String universityName;
+
     public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
         switch (messageEnvelope.getType()) {
             case CONNECTION_RESPONSE:
@@ -59,14 +63,11 @@ public class AgentService {
 
         return this.unencryptedFromSerializable(connectionRequest.getRequestNonce(),
                             MessageEnvelope.MessageType.CONNECTION_REQUEST, connectionRequest);
-
     }
 
     public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         Student student = studentService.getStudentByStudentId(identityService.getStudentId());
         if (student.getTranscript() != null && !student.getTranscript().isProven()) {
-
-
             CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
             AuthcryptedMessage authcryptedMessage = universityIssuer.authEncrypt(credentialOffer).get();
             return Collections.singletonList(this.fromEncrypted(MessageEnvelope.MessageType.CREDENTIAL_OFFER, authcryptedMessage));
@@ -82,8 +83,9 @@ public class AgentService {
         studentService.setStudentDid(identityService.getStudentId(), connectionResponse.getDid());
         universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
 
+        log.debug("Acknowledging with name: {}", universityName);
         // TODO proper connection acknowledgement
-        return new MessageEnvelope("", MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT, new TextNode(""));
+        return new MessageEnvelope("", MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT, new TextNode(universityName));
     }
 
     private MessageEnvelope handleCredentialRequest(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
@@ -98,6 +100,8 @@ public class AgentService {
 
         AuthcryptedMessage authcryptedCredentialWithRequest = universityIssuer.createCredential(credentialRequest, values)
                 .thenCompose(AsyncUtil.wrapException(universityIssuer::authEncrypt)).get();
+
+        studentService.proveTranscript(student.getStudentId());
 
         return fromEncrypted(MessageEnvelope.MessageType.CREDENTIAL, authcryptedCredentialWithRequest);
     }
