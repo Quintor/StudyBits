@@ -18,6 +18,9 @@ import java.nio.file.Paths;
 
 @Configuration
 public class IndyConfiguration {
+    @Value("${nl.quintor.studybits.university.name}")
+    private String universityName;
+
     @Bean
     public TrustAnchor universityTrustAnchor(IndyWallet universityWallet) throws Exception {
         return new TrustAnchor(universityWallet);
@@ -30,7 +33,7 @@ public class IndyConfiguration {
 
     @Bean
     public IndyWallet universityWallet() throws Exception {
-        String name = "rug";
+        String name = universityName.replace(" ", "");
         String poolName = PoolUtils.createPoolLedgerConfig(null);
         IndyPool indyPool = new IndyPool(poolName);
         return IndyWallet.create(indyPool, name + "_wallet", StringUtils.leftPad(name, 32, '0'));
