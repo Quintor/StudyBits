@@ -83,7 +83,8 @@ public class ScenarioIT {
     @Test
     public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
         MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders()
-                .post("/agent/login/12345678")
+                .queryParam("student_id", "12345678")
+                .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);

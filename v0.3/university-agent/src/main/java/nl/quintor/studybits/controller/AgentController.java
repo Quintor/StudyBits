@@ -24,8 +24,8 @@ public class AgentController {
         return agentService.processMessage(JSONUtil.mapper.readValue(message, MessageEnvelope.class));
     }
 
-    @PostMapping("/login/{student_id}")
-    public MessageEnvelope login(@PathVariable("student_id") String studentId) throws InterruptedException, ExecutionException, IndyException {
+    @PostMapping("/login")
+    public MessageEnvelope login(@RequestParam("student_id") String studentId) throws InterruptedException, ExecutionException, IndyException {
         return agentService.login(studentId);
     }
 
