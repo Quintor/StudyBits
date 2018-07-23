@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.service.AgentService;
+import nl.quintor.studybits.service.ExchangePositionService;
 import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,8 @@ public class AgentController {
     @Autowired
     private AgentService agentService;
 
+    @Autowired
+    private ExchangePositionService exchangePositionService;
     @PostMapping("/message")
     public MessageEnvelope processMessage(@RequestBody String message) throws IOException, IndyException, ExecutionException, InterruptedException {
         return agentService.processMessage(JSONUtil.mapper.readValue(message, MessageEnvelope.class));
@@ -32,5 +35,10 @@ public class AgentController {
     @GetMapping("/credential_offer")
     public List<MessageEnvelope> credentialOffers() throws ExecutionException, InterruptedException, JsonProcessingException, IndyException {
         return agentService.getCredentialOffers();
+    }
+
+    @GetMapping("/exchange_position")
+    public List<ExchangePositionService.ExchangePositionDto> exchangePositions() {
+        return exchangePositionService.getAll();
     }
 }

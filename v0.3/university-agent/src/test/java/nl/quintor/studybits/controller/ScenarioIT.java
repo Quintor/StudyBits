@@ -11,12 +11,14 @@ import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
+import nl.quintor.studybits.service.ExchangePositionService;
 import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.indy.sdk.IndyException;
 import org.junit.*;
 import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -194,6 +196,17 @@ public class ScenarioIT {
         assertThat(Arrays.asList(credentialOfferEnvelopes), hasSize(0));
     }
 
+    @Test
+    public void test4_getExchangePositions() {
+        ExchangePositionService.ExchangePositionDto[] exchangePositions = givenCorrectHeaders(ENDPOINT_GENT)
+                .get("/agent/exchange_position")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(ExchangePositionService.ExchangePositionDto[].class);
+
+        assertThat(Arrays.asList(exchangePositions), hasSize(1));
+        assertThat(exchangePositions[0].getName(), is(equalTo("MSc Marketing")));
+    }
 
     static RequestSpecification givenCorrectHeaders(String endpoint) {
         return given()
