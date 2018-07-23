@@ -17,6 +17,8 @@ import org.junit.*;
 import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.concurrent.ExecutionException;
 
@@ -25,6 +27,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.hasSize;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ScenarioIT {
@@ -103,6 +106,7 @@ public class ScenarioIT {
                 .extract().as(MessageEnvelope.class);
 
         assertThat(connectionAcknowledgementEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT)));
+        assertThat(connectionAcknowledgementEnvelope.getMessage().asText(), is(equalTo("Rijksuniversiteit Groningen")));
     }
 
     @Test
@@ -145,6 +149,14 @@ public class ScenarioIT {
         assertThat(credential.getValues().get("degree").get("raw").asText(), is(equalTo("Bachelor of Arts, Marketing")));
         assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
         assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
+
+        credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
+                .get("/agent/credential_offer")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope[].class);
+
+        assertThat(Arrays.asList(credentialOfferEnvelopes), hasSize(0));
     }
 
     @Test
@@ -171,6 +183,15 @@ public class ScenarioIT {
                 .extract().as(MessageEnvelope.class);
 
         assertThat(connectionAcknowledgementEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT)));
+        assertThat(connectionAcknowledgementEnvelope.getMessage().asText(), is(equalTo("Universiteit Gent")));
+
+        MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
+                .get("/agent/credential_offer")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope[].class);
+
+        assertThat(Arrays.asList(credentialOfferEnvelopes), hasSize(0));
     }
 
 

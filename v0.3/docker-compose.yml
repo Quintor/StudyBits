@@ -52,6 +52,8 @@ services:
   tests:
     build:
       context: university-agent
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
     network_mode: "host"
     command: mvn verify
     depends_on:

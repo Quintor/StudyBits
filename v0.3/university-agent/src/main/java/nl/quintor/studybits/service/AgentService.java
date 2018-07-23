@@ -74,7 +74,7 @@ public class AgentService {
 
     public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         Student student = studentService.getStudentByStudentId(identityService.getStudentId());
-        if (student.getTranscript() != null && !student.getTranscript().isProven()) {
+        if (student != null && student.getTranscript() != null && !student.getTranscript().isProven()) {
             CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
             AuthcryptedMessage authcryptedMessage = universityIssuer.authEncrypt(credentialOffer).get();
             return Collections.singletonList(this.fromEncrypted(MessageEnvelope.MessageType.CREDENTIAL_OFFER, authcryptedMessage));
