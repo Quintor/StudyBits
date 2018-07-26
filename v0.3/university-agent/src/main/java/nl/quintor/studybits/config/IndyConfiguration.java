@@ -1,9 +1,6 @@
 package nl.quintor.studybits.config;
 
-import nl.quintor.studybits.indy.wrapper.IndyPool;
-import nl.quintor.studybits.indy.wrapper.IndyWallet;
-import nl.quintor.studybits.indy.wrapper.Issuer;
-import nl.quintor.studybits.indy.wrapper.TrustAnchor;
+import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -24,6 +21,11 @@ public class IndyConfiguration {
     @Bean
     public TrustAnchor universityTrustAnchor(IndyWallet universityWallet) throws Exception {
         return new TrustAnchor(universityWallet);
+    }
+
+    @Bean
+    public Verifier universityVerifier(IndyWallet universityWallet) {
+        return new Verifier(universityWallet);
     }
 
     @Bean

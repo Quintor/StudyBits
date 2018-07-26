@@ -19,9 +19,7 @@ import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static io.restassured.RestAssured.given;
@@ -146,7 +144,11 @@ public class ScenarioIT {
 
         AuthcryptedMessage authcryptedCredential = new AuthcryptedMessage(Base64.getDecoder().decode(credentialEnvelope.getMessage().asText()), credentialEnvelope.getId());
 
-        Credential credential = prover.authDecrypt(authcryptedCredential, CredentialWithRequest.class).get().getCredential();
+        CredentialWithRequest credentialWithRequest = prover.authDecrypt(authcryptedCredential, CredentialWithRequest.class).get();
+
+        prover.storeCredential(credentialWithRequest).get();
+
+        Credential credential = credentialWithRequest.getCredential();
 
         assertThat(credential.getValues().get("degree").get("raw").asText(), is(equalTo("Bachelor of Arts, Marketing")));
         assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
@@ -197,7 +199,7 @@ public class ScenarioIT {
     }
 
     @Test
-    public void test4_getExchangePositions() {
+    public void test4_getExchangePositionsAndApply() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         ExchangePositionService.ExchangePositionDto[] exchangePositions = givenCorrectHeaders(ENDPOINT_GENT)
                 .get("/agent/exchange_position")
                 .then()
@@ -206,6 +208,35 @@ public class ScenarioIT {
 
         assertThat(Arrays.asList(exchangePositions), hasSize(1));
         assertThat(exchangePositions[0].getName(), is(equalTo("MSc Marketing")));
+        assertThat(exchangePositions[0].isFulfilled(), is(equalTo(false)));
+
+        ProofRequest proofRequest = studentWallet.authDecrypt(exchangePositions[0].getAuthcryptedProofRequest(), ProofRequest.class).get();
+
+
+
+        Prover prover = new Prover(studentWallet, "master_secret_name");
+        Map<String, String> values = new HashMap<>();
+
+        AuthcryptedMessage authcryptedProof = prover.fulfillProofRequest(proofRequest, values)
+                .thenCompose(AsyncUtil.wrapException(prover::authEncrypt)).get();
+
+        MessageEnvelope proofEnvelope = new MessageEnvelope(authcryptedProof.getDid(), MessageEnvelope.MessageType.PROOF,
+                new TextNode(Base64.getEncoder().encodeToString(authcryptedProof.getMessage())));
+
+        givenCorrectHeaders(ENDPOINT_GENT)
+                .body(proofEnvelope)
+                .post("/agent/message")
+                .then()
+                .assertThat().statusCode(200);
+
+        exchangePositions = givenCorrectHeaders(ENDPOINT_GENT)
+                .get("/agent/exchange_position")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(ExchangePositionService.ExchangePositionDto[].class);
+
+        assertThat(Arrays.asList(exchangePositions), hasSize(1));
+        assertThat(exchangePositions[0].isFulfilled(), is(equalTo(true)));
     }
 
     static RequestSpecification givenCorrectHeaders(String endpoint) {

@@ -21,7 +21,6 @@ services:
     - TEST_POOL_IP=$TEST_POOL_IP
     - SPRING_PROFILES_ACTIVE=mobile-test
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Rijksuniversiteit Groningen
-    - RUST_LOG=info
     depends_on:
       pool:
         condition: service_started
@@ -42,7 +41,6 @@ services:
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Universiteit Gent
     - SERVER_PORT=8081
     - SPRING_PROFILES_ACTIVE=mobile-test
-    - RUST_LOG=info
     depends_on:
       pool:
         condition: service_started

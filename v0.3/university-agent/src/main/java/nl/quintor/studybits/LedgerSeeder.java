@@ -69,7 +69,7 @@ public class LedgerSeeder {
 
             Issuer stewardIssuer = new Issuer(stewardWallet);
             if (universityName.equals("Rijksuniversiteit Groningen")) {
-                String schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "degree", "status", "average").get();
+                String schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "first_name", "last_name", "degree", "status", "average").get();
 
                 credentialDefinitionService.createCredentialDefintion(schemaId);
 

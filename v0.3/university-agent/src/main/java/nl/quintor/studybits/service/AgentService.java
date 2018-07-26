@@ -3,9 +3,11 @@ package nl.quintor.studybits.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.node.TextNode;
 import lombok.extern.slf4j.Slf4j;
+import nl.quintor.studybits.entity.ExchangePosition;
 import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.indy.wrapper.Issuer;
 import nl.quintor.studybits.indy.wrapper.TrustAnchor;
+import nl.quintor.studybits.indy.wrapper.Verifier;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +35,9 @@ public class AgentService {
     private Issuer universityIssuer;
 
     @Autowired
+    private Verifier universityVerifier;
+
+    @Autowired
     private IdentityService identityService;
 
     @Autowired
@@ -40,15 +46,20 @@ public class AgentService {
     @Autowired
     private CredentialDefinitionService credentialDefinitionService;
 
+    @Autowired
+    private ExchangePositionService exchangePositionService;
+
     @Value("${nl.quintor.studybits.university.name}")
     private String universityName;
 
-    public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
+    public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
         switch (messageEnvelope.getType()) {
             case CONNECTION_RESPONSE:
                 return handleConnectionResponse(messageEnvelope);
             case CREDENTIAL_REQUEST:
                 return handleCredentialRequest(messageEnvelope);
+            case PROOF:
+                return handleProof(messageEnvelope);
             default:
                 throw new NotImplementedException("Processing of message type not supported: " + messageEnvelope.getType());
 
@@ -63,6 +74,7 @@ public class AgentService {
             studentId = student.getStudentId();
         }
 
+        log.debug("Setting studentId in identityService to {}", studentId);
         identityService.setStudentId(studentId);
         ConnectionRequest connectionRequest = universityTrustAnchor.createConnectionRequest(studentId, null).get();
 
@@ -97,10 +109,14 @@ public class AgentService {
 
     private MessageEnvelope handleCredentialRequest(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
         AuthcryptedMessage authcryptedCredentialRequest = authcryptedFromEnvelope(messageEnvelope);
+        log.debug("Transformed envelope");
         CredentialRequest credentialRequest = universityTrustAnchor.authDecrypt(authcryptedCredentialRequest, CredentialRequest.class).get();
+        log.debug("Decrypted request");
         Student student = studentService.getStudentByStudentDid(messageEnvelope.getId());
 
         Map<String, Object> values = new HashMap<>();
+        values.put("first_name", student.getFirstName());
+        values.put("last_name", student.getLastName());
         values.put("degree", student.getTranscript().getDegree());
         values.put("average", student.getTranscript().getAverage());
         values.put("status", student.getTranscript().getStatus());
@@ -111,6 +127,20 @@ public class AgentService {
         studentService.proveTranscript(student.getStudentId());
 
         return fromEncrypted(MessageEnvelope.MessageType.CREDENTIAL, authcryptedCredentialWithRequest);
+    }
+
+    private MessageEnvelope handleProof(MessageEnvelope proofEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
+        AuthcryptedMessage authcryptedProof = authcryptedFromEnvelope(proofEnvelope);
+        Student student = studentService.getStudentByStudentId(identityService.getStudentId());
+        ProofRequest proofRequest = JSONUtil.mapper.readValue(student.getProofRequest(), ProofRequest.class);
+
+
+        List<ProofAttribute> proofAttributes = universityIssuer.authDecrypt(authcryptedProof, Proof.class)
+                .thenCompose(proof -> universityVerifier.getVerifiedProofAttributes(proofRequest, proof)).get();
+
+
+        exchangePositionService.fullfillPosition(student.getExchangePosition().getId());
+        return new MessageEnvelope();
     }
 
     private MessageEnvelope unencryptedFromSerializable(String id, MessageEnvelope.MessageType type, Serializable message) {

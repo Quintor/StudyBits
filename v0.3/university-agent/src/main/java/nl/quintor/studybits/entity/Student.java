@@ -30,6 +30,12 @@ public class Student {
     @Column(unique = true)
     private String studentDid;
 
+    @Lob
+    private String proofRequest;
+
+    @OneToOne
+    private ExchangePosition exchangePosition;
+
     @Column
     private String myDid;
 

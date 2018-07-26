@@ -1,5 +1,6 @@
 package nl.quintor.studybits.service;
 
+import nl.quintor.studybits.entity.ExchangePosition;
 import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,17 @@ public class StudentService {
                 studentId
         );
         studentEntity.getTranscript().setProven(true);
+        studentRepository.saveAndFlush(studentEntity);
+    }
+
+    @Transactional
+    public void setExchangePositionData(String studentId, String proofRequest, ExchangePosition exchangePosition) {
+        Student studentEntity = studentRepository.getStudentByStudentId(
+                studentId
+        );
+
+        studentEntity.setProofRequest(proofRequest);
+        studentEntity.setExchangePosition(exchangePosition);
         studentRepository.saveAndFlush(studentEntity);
     }
 

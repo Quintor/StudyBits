@@ -24,4 +24,7 @@ public class ExchangePosition {
     @Lob
     private String proofRequestTemplate;
 
+    @Column
+    private boolean fulfilled;
+
 }
