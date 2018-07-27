@@ -1,14 +1,7 @@
 package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import net.bytebuddy.asm.Advice;
 import nl.quintor.studybits.Seeder;
-import nl.quintor.studybits.entity.ExchangePosition;
-import nl.quintor.studybits.indy.wrapper.TrustAnchor;
-import nl.quintor.studybits.indy.wrapper.dto.AttributeInfo;
-import nl.quintor.studybits.indy.wrapper.dto.Filter;
-import nl.quintor.studybits.indy.wrapper.dto.PredicateInfo;
-import nl.quintor.studybits.indy.wrapper.dto.ProofRequest;
 import nl.quintor.studybits.repository.ExchangePositionRepository;
 import nl.quintor.studybits.repository.StudentRepository;
 import nl.quintor.studybits.service.CredentialDefinitionService;
@@ -21,9 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 @RestController
@@ -36,10 +26,15 @@ public class BootstrapController {
     private StudentRepository studentRepository;
 
     @Autowired
+    private ExchangePositionRepository exchangePositionRepository;
+
+    @Autowired
     private ExchangePositionService exchangePositionService;
 
     @Autowired
     private Seeder seeder;
+
+    private String credDefId;
 
     @PostMapping("/credential_definition/{schemaId}")
     public void createCredentialDefinition(@PathVariable("schemaId") String schemaId) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
@@ -57,11 +52,16 @@ public class BootstrapController {
     @PostMapping("/exchange_position/{credDefId}")
     public void createExchangePosition(@PathVariable("credDefId") String credDefId) throws JsonProcessingException {
         exchangePositionService.createExchangePosition(credDefId);
+        this.credDefId = credDefId;
     }
 
     @PostMapping("/reset")
-    public void reset(){
+    public void reset() throws JsonProcessingException {
         studentRepository.deleteAll();
+        exchangePositionRepository.deleteAll();
         seeder.seed();
+        if (credDefId  != null) {
+            exchangePositionService.createExchangePosition(credDefId);
+        }
     }
 }
