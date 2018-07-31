@@ -1,12 +1,15 @@
 version: '2.3'
 services:
+  quindy:
+    image: quindy
+    build: ./quindy
+    command: sh -c 'sleep 1; exit 0'
   pool:
     build:
       context: ci
       dockerfile: indy-pool.dockerfile
       args:
         pool_ip: $TEST_POOL_IP
-
     ports:
     - "9701-9708:9701-9708"
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
@@ -22,10 +25,13 @@ services:
     - SPRING_PROFILES_ACTIVE=mobile-test
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Rijksuniversiteit Groningen
     depends_on:
+      quindy:
+        condition: service_started
       pool:
         condition: service_started
       university-agent-gent:
         condition: service_healthy
+
     healthcheck:
       test: curl -f http://localhost:8080/swagger-ui.html || exit 1
       interval: 5s
@@ -42,6 +48,8 @@ services:
     - SERVER_PORT=8081
     - SPRING_PROFILES_ACTIVE=mobile-test
     depends_on:
+      quindy:
+        condition: service_started
       pool:
         condition: service_started
     healthcheck:

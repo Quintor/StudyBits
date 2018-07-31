@@ -1,3 +1,6 @@
+FROM quindy:latest
+RUN mvn install -DskipTests
+
 FROM ubuntu:16.04
 # First install software-properties-common for add-apt-repository, and apt-transport-https to communicate.
 RUN apt-get update \
@@ -16,10 +19,11 @@ ARG LIBINDY_VERSION=1.5.0
 # Split off libindy command for fast builds on version bump
 RUN apt-get update && apt-get install -y libindy=$LIBINDY_VERSION
 
-RUN git clone https://github.com/Quintor/quindy.git \
-    && cd quindy \
-    && git checkout bb19b88416238b3e4b3259d09cf233b893633077 \
-    && mvn install -DskipTests
+RUN mkdir /quindy
+COPY --from=0 /pom.xml /quindy/pom.xml
+COPY --from=0 /target/quindy-*-jar-with-dependencies.jar /quindy/quindy.jar
+
+RUN mvn install:install-file -Dfile=/quindy/quindy.jar  -DpomFile=/quindy/pom.xml
 
 ADD pom.xml /
 RUN mvn package
