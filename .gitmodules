@@ -1,0 +1,3 @@
+[submodule "quindy"]
+	path = quindy
+	url = https://github.com/Quintor/quindy.git

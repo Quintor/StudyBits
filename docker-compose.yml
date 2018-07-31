@@ -1,52 +1,70 @@
 version: '2.3'
 services:
+  quindy:
+    image: quindy
+    build: ./quindy
+    command: sh -c 'sleep 1; exit 0'
   pool:
     build:
       context: ci
       dockerfile: indy-pool.dockerfile
+      args:
+        pool_ip: $TEST_POOL_IP
     ports:
     - "9701-9708:9701-9708"
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
     network_mode: "host"
 
-  backend-student:
-    depends_on:
-      backend-university:
-        condition: service_healthy
+  university-agent-rug:
     build:
-      context: student
-    ports:
-    - "8095:8095"
-#    environment:
-#    - RUST_LOG=info
+      context: university-agent
+    command: mvn package spring-boot:run
     network_mode: "host"
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
+    - SPRING_PROFILES_ACTIVE=mobile-test
+    - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Rijksuniversiteit Groningen
+    depends_on:
+      quindy:
+        condition: service_started
+      pool:
+        condition: service_started
+      university-agent-gent:
+        condition: service_healthy
+
     healthcheck:
-      test: curl -f http://localhost:8095/test/health || exit 1
+      test: curl -f http://localhost:8080/swagger-ui.html || exit 1
       interval: 5s
       timeout: 2s
       retries: 35
-  backend-university:
-    depends_on:
-      - pool
+  university-agent-gent:
     build:
-      context: university
-    ports:
-      - "8090:8090"
-#    environment:
-#    - RUST_LOG=info
+      context: university-agent
+    command: mvn package spring-boot:run
     network_mode: "host"
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
+    - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Universiteit Gent
+    - SERVER_PORT=8081
+    - SPRING_PROFILES_ACTIVE=mobile-test
+    depends_on:
+      quindy:
+        condition: service_started
+      pool:
+        condition: service_started
     healthcheck:
-      test: curl -f http://localhost:8090/test/health || exit 1
+      test: curl -f http://localhost:8081/swagger-ui.html || exit 1
       interval: 5s
       timeout: 2s
       retries: 35
   tests:
     build:
-      context: integration-tests
+      context: university-agent
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
     network_mode: "host"
+    command: mvn verify
     depends_on:
-      backend-student:
-        condition: service_healthy
-      backend-university:
+      university-agent-rug:
         condition: service_healthy
 

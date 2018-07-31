@@ -39,6 +39,7 @@ RUN apt-get update -y && apt-get install -y \
         python3-indy-crypto=${python3_indy_crypto_ver} \
 	    python3-base58=0.2.4 \
         libindy-crypto=${indy_crypto_ver} \
+        python3-base58=0.2.4 \
         vim
 
 RUN echo '[supervisord]\n\
