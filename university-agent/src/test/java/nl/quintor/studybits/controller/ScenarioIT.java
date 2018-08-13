@@ -7,6 +7,7 @@ import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
 import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.dto.*;
+import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
@@ -83,20 +84,20 @@ public class ScenarioIT {
 
     @Test
     public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+        MessageEnvelope<ConnectionRequest> connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .queryParam("student_id", "12345678")
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        ConnectionRequest connectionRequest = JSONUtil.mapper.treeToValue(connectionRequestEnvelope.getMessage(), ConnectionRequest.class);
+        connectionRequestEnvelope.setIndyWallet(studentWallet);
 
-        AnoncryptedMessage anoncryptedConnectionResponse = studentWallet.acceptConnectionRequest(connectionRequest)
-                .thenCompose(AsyncUtil.wrapException(studentWallet::anonEncrypt)).get();
+        ConnectionRequest connectionRequest = connectionRequestEnvelope.getMessage();
 
-        MessageEnvelope connectionResponseEnvelope = new MessageEnvelope(connectionRequest.getRequestNonce(), MessageEnvelope.MessageType.CONNECTION_RESPONSE,
-                new TextNode(Base64.getEncoder().encodeToString(anoncryptedConnectionResponse.getMessage())));
+        ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
+
+        MessageEnvelope connectionResponseEnvelope = MessageEnvelope.fromAnoncryptable(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, studentWallet);
 
         MessageEnvelope connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(connectionResponseEnvelope)
@@ -105,13 +106,13 @@ public class ScenarioIT {
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        assertThat(connectionAcknowledgementEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT)));
-        assertThat(connectionAcknowledgementEnvelope.getMessage().asText(), is(equalTo("Rijksuniversiteit Groningen")));
+        assertThat(connectionAcknowledgementEnvelope.getType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT)));
+        assertThat(connectionAcknowledgementEnvelope.getMessage(), is(equalTo("Rijksuniversiteit Groningen")));
     }
 
     @Test
     public void test2_obtainingCredential() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
+        MessageEnvelope<CredentialOffer>[] credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
                 .get("/agent/credential_offer")
                 .then()
                 .assertThat().statusCode(200)
@@ -119,32 +120,31 @@ public class ScenarioIT {
 
         assertThat(credentialOfferEnvelopes, arrayWithSize(equalTo(1)));
 
-        AuthcryptedMessage authcryptedCredentialOffer = new AuthcryptedMessage(Base64.getDecoder().decode(credentialOfferEnvelopes[0].getMessage().asText()), credentialOfferEnvelopes[0].getId());
+        credentialOfferEnvelopes[0].setIndyWallet(studentWallet);
 
-        CredentialOffer credentialOffer = studentWallet.authDecrypt(authcryptedCredentialOffer, CredentialOffer.class).get();
+        CredentialOffer credentialOffer = credentialOfferEnvelopes[0].getMessage();
+
         assertThat(credentialOffer.getSchemaId(), is(equalTo(schemaId)));
 
         Prover prover = new Prover(studentWallet, "master_secret_name");
         prover.init();
 
-        AuthcryptedMessage authcryptedCredentialRequest = prover.createCredentialRequest(credentialOffer)
-                .thenCompose(AsyncUtil.wrapException(prover::authEncrypt)).get();
+        CredentialRequest credentialRequest = prover.createCredentialRequest(credentialOffer).get();
 
-        MessageEnvelope authcryptedCredentialRequestEnvelope = new MessageEnvelope(authcryptedCredentialRequest.getDid(), MessageEnvelope.MessageType.CREDENTIAL_REQUEST,
-                new TextNode(Base64.getEncoder().encodeToString(authcryptedCredentialRequest.getMessage())));
+        MessageEnvelope authcryptedCredentialRequestEnvelope = MessageEnvelope.fromAuthcryptable(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, studentWallet);
 
-        MessageEnvelope credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+        MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(authcryptedCredentialRequestEnvelope)
                 .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        assertThat(credentialEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CREDENTIAL)));
+        assertThat(credentialEnvelope.getType().getURN(), is(equalTo(IndyMessageTypes.CREDENTIAL.getURN())));
 
-        AuthcryptedMessage authcryptedCredential = new AuthcryptedMessage(Base64.getDecoder().decode(credentialEnvelope.getMessage().asText()), credentialEnvelope.getId());
+        credentialEnvelope.setIndyWallet(prover);
 
-        CredentialWithRequest credentialWithRequest = prover.authDecrypt(authcryptedCredential, CredentialWithRequest.class).get();
+        CredentialWithRequest credentialWithRequest = credentialEnvelope.getMessage();
 
         prover.storeCredential(credentialWithRequest).get();
 
@@ -165,29 +165,29 @@ public class ScenarioIT {
 
     @Test
     public void test3_ConnectGent() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        MessageEnvelope connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+        MessageEnvelope<ConnectionRequest> connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        ConnectionRequest connectionRequest = JSONUtil.mapper.treeToValue(connectionRequestEnvelope.getMessage(), ConnectionRequest.class);
+        ConnectionRequest connectionRequest = connectionRequestEnvelope.getMessage();
 
-        AnoncryptedMessage anoncryptedConnectionResponse = studentWallet.acceptConnectionRequest(connectionRequest)
-                .thenCompose(AsyncUtil.wrapException(studentWallet::anonEncrypt)).get();
+        ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
 
-        MessageEnvelope connectionResponseEnvelope = new MessageEnvelope(connectionRequest.getRequestNonce(), MessageEnvelope.MessageType.CONNECTION_RESPONSE,
-                new TextNode(Base64.getEncoder().encodeToString(anoncryptedConnectionResponse.getMessage())));
+        MessageEnvelope connectionResponseEnvelope = MessageEnvelope.fromAnoncryptable(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, studentWallet);
 
-        MessageEnvelope connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+        MessageEnvelope<String> connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
                 .body(connectionResponseEnvelope)
                 .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        assertThat(connectionAcknowledgementEnvelope.getType(), is(equalTo(MessageEnvelope.MessageType.CONNECTION_ACKNOWLEDGEMENT)));
-        assertThat(connectionAcknowledgementEnvelope.getMessage().asText(), is(equalTo("Universiteit Gent")));
+        connectionAcknowledgementEnvelope.setIndyWallet(studentWallet);
+
+        assertThat(connectionAcknowledgementEnvelope.getType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
+        assertThat(connectionAcknowledgementEnvelope.getMessage(), is(equalTo("Universiteit Gent")));
 
         MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
                 .get("/agent/credential_offer")
@@ -217,11 +217,9 @@ public class ScenarioIT {
         Prover prover = new Prover(studentWallet, "master_secret_name");
         Map<String, String> values = new HashMap<>();
 
-        AuthcryptedMessage authcryptedProof = prover.fulfillProofRequest(proofRequest, values)
-                .thenCompose(AsyncUtil.wrapException(prover::authEncrypt)).get();
+        Proof proof = prover.fulfillProofRequest(proofRequest, values).get();
 
-        MessageEnvelope proofEnvelope = new MessageEnvelope(authcryptedProof.getDid(), MessageEnvelope.MessageType.PROOF,
-                new TextNode(Base64.getEncoder().encodeToString(authcryptedProof.getMessage())));
+        MessageEnvelope proofEnvelope = MessageEnvelope.fromAuthcryptable(proof, IndyMessageTypes.PROOF, prover);
 
         givenCorrectHeaders(ENDPOINT_GENT)
                 .body(proofEnvelope)
