@@ -88,7 +88,7 @@ public class AgentService {
 
         studentService.setConnectionData(studentId, connectionRequest.getDid(), connectionRequest.getRequestNonce());
 
-        return new MessageEnvelope<>(IndyMessageTypes.CONNECTION_REQUEST, connectionRequest, null, null, null);
+        return new MessageEnvelope<>(IndyMessageTypes.CONNECTION_REQUEST, connectionRequest, null, universityTrustAnchor, null);
     }
 
     public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
@@ -105,7 +105,9 @@ public class AgentService {
         ConnectionResponse connectionResponse = messageEnvelope.getMessage();
 
         studentService.setStudentDid(identityService.getStudentId(), connectionResponse.getDid());
-        universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
+        String studentUniversityDid = universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
+        //Dit is de student DID?
+        System.out.println("studentUniversityDid: "  + studentUniversityDid);
 
         log.debug("Acknowledging with name: {}", universityName);
         // TODO proper connection acknowledgement
@@ -115,7 +117,7 @@ public class AgentService {
     private MessageEnvelope handleCredentialRequest(MessageEnvelope<CredentialRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
         CredentialRequest credentialRequest = messageEnvelope.getMessage();
         log.debug("Decrypted request");
-        Student student = studentService.getStudentByStudentDid(messageEnvelope.getTheirDid());
+        Student student = studentService.getStudentByStudentDid(messageEnvelope.getDid());
 
         Map<String, Object> values = new HashMap<>();
         values.put("first_name", student.getFirstName());

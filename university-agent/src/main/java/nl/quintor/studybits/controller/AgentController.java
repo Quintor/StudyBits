@@ -24,6 +24,7 @@ public class AgentController {
     private ExchangePositionService exchangePositionService;
     @PostMapping("/message")
     public MessageEnvelope processMessage(@RequestBody String message) throws IOException, IndyException, ExecutionException, InterruptedException {
+        System.out.println("MESSAGE TEST: " + message);
         return agentService.processMessage(JSONUtil.mapper.readValue(message, MessageEnvelope.class));
     }
 

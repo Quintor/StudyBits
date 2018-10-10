@@ -13,13 +13,17 @@ import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import nl.quintor.studybits.service.ExchangePositionService;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.hyperledger.indy.sdk.pool.Pool;
 import org.hyperledger.indy.sdk.IndyException;
 import org.junit.*;
 import org.junit.runners.MethodSorters;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -41,15 +45,25 @@ public class ScenarioIT {
 
     static String schemaId;
 
+    static Issuer university;
+    private static void removeIndyClientDirectory() throws Exception {
+        String homeDir = System.getProperty("user.home");
+        File indyClientDir = Paths.get(homeDir, ".indy_client").toFile();
+        FileUtils.deleteDirectory(indyClientDir);
+    }
     @BeforeClass
-    public static void bootstrapBackend() throws InterruptedException, ExecutionException, IndyException, IOException {
+    public static void bootstrapBackend() throws Exception {
+        // Clear indy_client directory
+//        removeIndyClientDirectory();
+        Pool.setProtocolVersion(PoolUtils.PROTOCOL_VERSION).get();
+
         String poolName = PoolUtils.createPoolLedgerConfig(null, "testPool" + System.currentTimeMillis());
         indyPool = new IndyPool(poolName);
-        stewardWallet = IndyWallet.create(indyPool, "steward_wallet" + System.currentTimeMillis(), "000000000000000000000000Steward1");
+        stewardWallet = IndyWallet.create(indyPool, "steward" + System.currentTimeMillis(), "000000000000000000000000Steward1");
         TrustAnchor steward = new TrustAnchor(stewardWallet);
 
-        Issuer university = new Issuer(IndyWallet.create(indyPool, "university_wallet" + System.currentTimeMillis(), StringUtils.leftPad("rug", 32, '0')));
-
+        Issuer university = new Issuer(IndyWallet.create(indyPool, "RijksuniversiteitGroningen"+System.currentTimeMillis(), StringUtils.leftPad("RijksuniversiteitGroningen", 32, '0')));
+        System.out.println("DID TEST: " + university.getMainDid());
         // Connecting newcomer with Steward
         String governmentConnectionRequest = steward.createConnectionRequest(university.getName(), "TRUST_ANCHOR").get().toJSON();
 
@@ -64,13 +78,13 @@ public class ScenarioIT {
         AuthcryptedMessage verinym = university.authEncrypt(university.createVerinymRequest(JSONUtil.mapper.readValue(governmentConnectionRequest, ConnectionRequest.class)
                 .getDid()))
                 .get();
-
         steward.authDecrypt(verinym, Verinym.class)
                 .thenCompose(AsyncUtil.wrapException(steward::acceptVerinymRequest)).get();
 
 
         Issuer stewardIssuer = new Issuer(stewardWallet);
-        schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "degree", "status", "average").get();
+        schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "first_name", "last_name", "degree", "status", "average").get();
+        System.out.println("Schema ID: " + schemaId);
         System.out.println(sessionFilter.getSessionId());
         givenCorrectHeaders(ENDPOINT_RUG)
                 .when()
@@ -78,12 +92,14 @@ public class ScenarioIT {
                 .then()
                 .assertThat().statusCode(200);
 
-        studentWallet = IndyWallet.create(indyPool, "student_wallet" + System.currentTimeMillis(), null);
+        studentWallet = IndyWallet.create(indyPool, "student" + System.currentTimeMillis(), null);
     }
 
-
     @Test
-    public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+    public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, IOException {
+        IndyMessageTypes.init();
+
+        // Student receivse a connectionRequest from the University
         MessageEnvelope<ConnectionRequest> connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .queryParam("student_id", "12345678")
                 .post("/agent/login")
@@ -92,21 +108,32 @@ public class ScenarioIT {
                 .extract().as(MessageEnvelope.class);
 
         connectionRequestEnvelope.setIndyWallet(studentWallet);
-
+        // Extract the connectionRequest from the Envelope
         ConnectionRequest connectionRequest = connectionRequestEnvelope.getMessage();
-
+        //Nieuw DID gemaakt door university?
+        System.out.println("CONNECTION REQUEST DID: " + connectionRequest.getDid());
+        String universityDid = connectionRequest.getDid();
+        // Student accepts the connectionRequest from the university and creates a connectionResponse
         ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
+        System.out.println("PAIRWISE: " + studentWallet.getPairwiseByTheirDid(universityDid).get());
+        //Nieuw DID gemaakt door student?
+        System.out.println("CONNECTION RESPONSE DID: " + connectionResponse.getDid());
+        String studentDid = connectionResponse.getDid();
 
+        // Put connectionResponse in an Envelope
         MessageEnvelope connectionResponseEnvelope = MessageEnvelope.fromAnoncryptable(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, studentWallet);
 
-        MessageEnvelope connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+        // Student sends the connectionResponse to the university and should receive a connectionAcknowledgement
+        String result = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(connectionResponseEnvelope)
                 .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
-                .extract().as(MessageEnvelope.class);
+                .extract().response().asString();
 
-        assertThat(connectionAcknowledgementEnvelope.getType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT)));
+        MessageEnvelope connectionAcknowledgementEnvelope = MessageEnvelope.parseFromString(result, studentWallet);
+
+        assertThat(connectionAcknowledgementEnvelope.getType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
         assertThat(connectionAcknowledgementEnvelope.getMessage(), is(equalTo("Rijksuniversiteit Groningen")));
     }
 
