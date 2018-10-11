@@ -12,6 +12,7 @@ import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
+import nl.quintor.studybits.indy.wrapper.util.SeedUtil;
 import nl.quintor.studybits.service.ExchangePositionService;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -92,7 +93,7 @@ public class ScenarioIT {
                 .then()
                 .assertThat().statusCode(200);
 
-        studentWallet = IndyWallet.create(indyPool, "student" + System.currentTimeMillis(), null);
+        studentWallet = IndyWallet.create(indyPool, "student" + System.currentTimeMillis(), SeedUtil.generateSeed());
     }
 
     @Test
