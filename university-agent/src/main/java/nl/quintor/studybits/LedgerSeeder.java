@@ -18,6 +18,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.hyperledger.indy.sdk.pool.Pool;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -40,12 +41,13 @@ public class LedgerSeeder {
     @EventListener
     public void seed(ContextRefreshedEvent event) throws InterruptedException, ExecutionException, IndyException, IOException {
         if (needsSeeding()) {
+            Pool.setProtocolVersion(PoolUtils.PROTOCOL_VERSION).get();
             String poolName = PoolUtils.createPoolLedgerConfig(null, "testPool" + System.currentTimeMillis());
             IndyPool indyPool = new IndyPool(poolName);
-            IndyWallet stewardWallet = IndyWallet.create(indyPool, "steward_wallet" + System.currentTimeMillis(), "000000000000000000000000Steward1");
+            IndyWallet stewardWallet = IndyWallet.create(indyPool, "steward" + System.currentTimeMillis(), "000000000000000000000000Steward1");
             TrustAnchor steward = new TrustAnchor(stewardWallet);
 
-            Issuer university = new Issuer(IndyWallet.create(indyPool, "university_wallet" + System.currentTimeMillis(),
+            Issuer university = new Issuer(IndyWallet.create(indyPool, "university" + System.currentTimeMillis(),
                     StringUtils.leftPad(universityName.replace(" ", ""), 32, '0')));
 
             // Connecting newcomer with Steward
