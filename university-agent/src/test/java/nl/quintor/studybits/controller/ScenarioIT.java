@@ -49,15 +49,9 @@ public class ScenarioIT {
     static String schemaId;
 
     static Issuer university;
-    private static void removeIndyClientDirectory() throws Exception {
-        String homeDir = System.getProperty("user.home");
-        File indyClientDir = Paths.get(homeDir, ".indy_client").toFile();
-        FileUtils.deleteDirectory(indyClientDir);
-    }
+
     @BeforeClass
     public static void bootstrapBackend() throws Exception {
-        // Clear indy_client directory
-//        removeIndyClientDirectory();
         Pool.setProtocolVersion(PoolUtils.PROTOCOL_VERSION).get();
 
         String poolName = PoolUtils.createPoolLedgerConfig(null, "testPool" + System.currentTimeMillis());

@@ -88,7 +88,7 @@ public class AgentService {
 
         studentService.setConnectionData(studentId, connectionRequest.getDid(), connectionRequest.getRequestNonce());
 
-        return new MessageEnvelope<>(IndyMessageTypes.CONNECTION_REQUEST, connectionRequest, null, universityTrustAnchor, null);
+        return new MessageEnvelope<>(IndyMessageTypes.CONNECTION_REQUEST, connectionRequest, null, null, null);
     }
 
     public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
