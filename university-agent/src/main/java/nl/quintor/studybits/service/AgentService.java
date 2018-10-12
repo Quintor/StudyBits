@@ -106,8 +106,8 @@ public class AgentService {
 
         studentService.setStudentDid(identityService.getStudentId(), connectionResponse.getDid());
         String studentUniversityDid = universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
-        //Dit is de student DID?
-        System.out.println("studentUniversityDid: "  + studentUniversityDid);
+
+        log.debug("studentUniversityDid: "  + studentUniversityDid);
 
         log.debug("Acknowledging with name: {}", universityName);
         // TODO proper connection acknowledgement

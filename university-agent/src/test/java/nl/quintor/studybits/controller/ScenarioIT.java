@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
+import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
@@ -36,6 +37,7 @@ import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.hasSize;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@Slf4j
 public class ScenarioIT {
     static final String ENDPOINT_RUG = "http://localhost:8080";
     static final String ENDPOINT_GENT = "http://localhost:8081";
@@ -64,7 +66,7 @@ public class ScenarioIT {
         TrustAnchor steward = new TrustAnchor(stewardWallet);
 
         Issuer university = new Issuer(IndyWallet.create(indyPool, "RijksuniversiteitGroningen"+System.currentTimeMillis(), StringUtils.leftPad("RijksuniversiteitGroningen", 32, '0')));
-        System.out.println("DID TEST: " + university.getMainDid());
+
         // Connecting newcomer with Steward
         String governmentConnectionRequest = steward.createConnectionRequest(university.getName(), "TRUST_ANCHOR").get().toJSON();
 
@@ -85,8 +87,8 @@ public class ScenarioIT {
 
         Issuer stewardIssuer = new Issuer(stewardWallet);
         schemaId = stewardIssuer.createAndSendSchema("Transcript", "1.0", "first_name", "last_name", "degree", "status", "average").get();
-        System.out.println("Schema ID: " + schemaId);
-        System.out.println(sessionFilter.getSessionId());
+        log.info("Schema ID: " + schemaId);
+        log.debug(sessionFilter.getSessionId());
         givenCorrectHeaders(ENDPOINT_RUG)
                 .when()
                 .post("/bootstrap/credential_definition/{schemaId}", schemaId)
@@ -111,14 +113,14 @@ public class ScenarioIT {
         connectionRequestEnvelope.setIndyWallet(studentWallet);
         // Extract the connectionRequest from the Envelope
         ConnectionRequest connectionRequest = connectionRequestEnvelope.getMessage();
-        //Nieuw DID gemaakt door university?
-        System.out.println("CONNECTION REQUEST DID: " + connectionRequest.getDid());
+        // New DID created by university
+        log.debug("CONNECTION REQUEST DID: " + connectionRequest.getDid());
         String universityDid = connectionRequest.getDid();
         // Student accepts the connectionRequest from the university and creates a connectionResponse
         ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
-        System.out.println("PAIRWISE: " + studentWallet.getPairwiseByTheirDid(universityDid).get());
-        //Nieuw DID gemaakt door student?
-        System.out.println("CONNECTION RESPONSE DID: " + connectionResponse.getDid());
+        log.debug("PAIRWISE: " + studentWallet.getPairwiseByTheirDid(universityDid).get());
+        //New DID created by student
+        log.debug("CONNECTION RESPONSE DID: " + connectionResponse.getDid());
         String studentDid = connectionResponse.getDid();
 
         // Put connectionResponse in an Envelope
