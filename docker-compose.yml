@@ -24,7 +24,6 @@ services:
     - TEST_POOL_IP=$TEST_POOL_IP
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Rijksuniversiteit Groningen
     - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES:-mobile-test}
-    - RUST_LOG=info
     depends_on:
       quindy:
         condition: service_started
@@ -63,7 +62,6 @@ services:
       context: university-agent
     environment:
     - TEST_POOL_IP=$TEST_POOL_IP
-    - RUST_LOG=info
     network_mode: "host"
     command: mvn verify
     depends_on:
