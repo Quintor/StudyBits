@@ -1,7 +1,9 @@
 package nl.quintor.studybits.config;
 
 import nl.quintor.studybits.indy.wrapper.*;
+import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
+import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.indy.sdk.pool.Pool;
@@ -37,6 +39,8 @@ public class IndyConfiguration {
     @Bean
     public IndyWallet universityWallet() throws Exception {
         Pool.setProtocolVersion(PoolUtils.PROTOCOL_VERSION).get();
+        StudyBitsMessageTypes.init();
+        IndyMessageTypes.init();
         String name = universityName.replace(" ", "");
         String poolName = PoolUtils.createPoolLedgerConfig(null);
         IndyPool indyPool = new IndyPool(poolName);

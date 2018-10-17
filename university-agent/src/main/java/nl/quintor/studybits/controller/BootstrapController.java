@@ -1,6 +1,7 @@
 package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import nl.quintor.studybits.LedgerSeeder;
 import nl.quintor.studybits.Seeder;
 import nl.quintor.studybits.repository.ExchangePositionRepository;
 import nl.quintor.studybits.repository.StudentRepository;
@@ -9,10 +10,7 @@ import nl.quintor.studybits.service.ExchangePositionService;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.anoncreds.CredDefAlreadyExistsException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.ExecutionException;
 
@@ -33,6 +31,9 @@ public class BootstrapController {
 
     @Autowired
     private Seeder seeder;
+
+    @Autowired
+    private LedgerSeeder ledgerSeeder;
 
     private String credDefId;
 
@@ -63,5 +64,11 @@ public class BootstrapController {
         if (credDefId  != null) {
             exchangePositionService.createExchangePosition(credDefId);
         }
+    }
+
+
+    @GetMapping("/ready")
+    public boolean isReady() {
+        return !ledgerSeeder.needsSeeding();
     }
 }
