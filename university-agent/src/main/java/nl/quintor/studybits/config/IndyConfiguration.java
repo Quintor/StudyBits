@@ -2,6 +2,7 @@ package nl.quintor.studybits.config;
 
 import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import org.apache.commons.io.FileUtils;
@@ -34,6 +35,11 @@ public class IndyConfiguration {
     @Bean
     public Issuer universityIssuer(IndyWallet universityWallet) {
         return new Issuer(universityWallet);
+    }
+
+    @Bean
+    public MessageEnvelopeCodec universityCodec(IndyWallet universityWallet) {
+        return new MessageEnvelopeCodec(universityWallet);
     }
 
     @Bean

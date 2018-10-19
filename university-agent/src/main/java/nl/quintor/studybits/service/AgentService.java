@@ -27,37 +27,26 @@ import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.*;
 @Service
 @Slf4j
 public class AgentService {
-
-    private final TrustAnchor universityTrustAnchor;
-
-    private final Issuer universityIssuer;
-
-    private final Verifier universityVerifier;
-
-    private final IdentityService identityService;
-
-    private final StudentService studentService;
-
-    private final CredentialDefinitionService credentialDefinitionService;
-
-    private final ExchangePositionService exchangePositionService;
-
-    private final MessageEnvelopeCodec messageEnvelopeCodec;
+    @Autowired
+    private TrustAnchor universityTrustAnchor;
+    @Autowired
+    private Issuer universityIssuer;
+    @Autowired
+    private Verifier universityVerifier;
+    @Autowired
+    private IdentityService identityService;
+    @Autowired
+    private StudentService studentService;
+    @Autowired
+    private CredentialDefinitionService credentialDefinitionService;
+    @Autowired
+    private ExchangePositionService exchangePositionService;
+    @Autowired
+    private MessageEnvelopeCodec messageEnvelopeCodec;
 
     @Value("${nl.quintor.studybits.university.name}")
     private String universityName;
 
-    @Autowired
-    public AgentService(TrustAnchor universityTrustAnchor, Issuer universityIssuer, Verifier universityVerifier, IdentityService identityService, StudentService studentService, CredentialDefinitionService credentialDefinitionService, ExchangePositionService exchangePositionService) {
-        this.universityTrustAnchor = universityTrustAnchor;
-        this.universityIssuer = universityIssuer;
-        this.universityVerifier = universityVerifier;
-        this.identityService = identityService;
-        this.studentService = studentService;
-        this.credentialDefinitionService = credentialDefinitionService;
-        this.exchangePositionService = exchangePositionService;
-        this.messageEnvelopeCodec = new MessageEnvelopeCodec(universityIssuer);
-    }
 
 
     public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {

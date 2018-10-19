@@ -33,25 +33,16 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class ExchangePositionService {
-    private final ExchangePositionRepository exchangePositionRepository;
-
-    private final IdentityService identityService;
-
-    private final StudentService studentService;
-
-    private final IndyWallet universityWallet;
-    private final MessageEnvelopeCodec universityCodec;
+    @Autowired
+    private ExchangePositionRepository exchangePositionRepository;
+    @Autowired
+    private IdentityService identityService;
+    @Autowired
+    private StudentService studentService;
+    @Autowired
+    private MessageEnvelopeCodec universityCodec;
 
     private static final Random random = new Random();
-
-    @Autowired
-    public ExchangePositionService(ExchangePositionRepository exchangePositionRepository, IdentityService identityService, StudentService studentService, IndyWallet universityWallet) {
-        this.exchangePositionRepository = exchangePositionRepository;
-        this.identityService = identityService;
-        this.studentService = studentService;
-        this.universityWallet = universityWallet;
-        this.universityCodec = new MessageEnvelopeCodec(universityWallet);
-    }
 
     @Transactional
     public void createExchangePosition(String credDefId) throws JsonProcessingException {
