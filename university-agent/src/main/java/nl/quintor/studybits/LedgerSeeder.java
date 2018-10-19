@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
@@ -83,16 +85,20 @@ public class LedgerSeeder {
     }
 
     public static void onboardIssuer(TrustAnchor steward, Issuer newcomer) throws InterruptedException, ExecutionException, IndyException, IOException {
+        // Create Codecs to facilitate encryption/decryption
+        MessageEnvelopeCodec stewardCodec = new MessageEnvelopeCodec(steward);
+        MessageEnvelopeCodec newcomerCodec = new MessageEnvelopeCodec(newcomer);
+
         // Connecting newcomer with Steward
 
         // #Step 4.1.2 & 4.1.3
         // Create new DID (For steward_faber connection) and send NYM request to ledger
-        String governmentConnectionRequest = MessageEnvelope.encryptMessage(steward.createConnectionRequest(newcomer.getName(), "TRUST_ANCHOR").get(),
-                IndyMessageTypes.CONNECTION_REQUEST, null).get().toJSON();
+        String governmentConnectionRequest = new MessageEnvelopeCodec(null).encryptMessage(steward.createConnectionRequest(newcomer.getName(), "TRUST_ANCHOR").get(),
+                IndyMessageTypes.CONNECTION_REQUEST).get().toJSON();
 
         // #Step 4.1.4 & 4.1.5
         // Steward sends connection request to Faber
-        ConnectionRequest connectionRequest = MessageEnvelope.parseFromString(governmentConnectionRequest, CONNECTION_REQUEST).extractMessage(newcomer).get();
+        ConnectionRequest connectionRequest = newcomerCodec.decryptMessage(MessageEnvelope.parseFromString(governmentConnectionRequest, CONNECTION_REQUEST)).get();
 
         // #Step 4.1.6
         // Faber accepts the connection request from Steward
@@ -100,11 +106,11 @@ public class LedgerSeeder {
 
         // #Step 4.1.9
         // Faber creates a connection response with its created DID and Nonce from the received request from Steward
-        String newcomerConnectionResponseString =  MessageEnvelope.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, newcomer).get().toJSON();
+        String newcomerConnectionResponseString =  newcomerCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get().toJSON();
 
         // #Step 4.1.13
         // Steward decrypts the anonymously encrypted message from Faber
-        ConnectionResponse connectionResponse = MessageEnvelope.parseFromString(newcomerConnectionResponseString, CONNECTION_RESPONSE).extractMessage(steward).get();
+        ConnectionResponse connectionResponse = stewardCodec.decryptMessage(MessageEnvelope.parseFromString(newcomerConnectionResponseString, CONNECTION_RESPONSE)).get();
 
         // #Step 4.1.14 & 4.1.15
         // Steward authenticates Faber
@@ -113,12 +119,12 @@ public class LedgerSeeder {
 
         // #Step 4.2.1 t/m 4.2.4
         // Faber needs a new DID to interact with identiy owners, thus create a new DID request steward to write on ledger
-        String verinymRequest = MessageEnvelope.encryptMessage(newcomer.createVerinymRequest(MessageEnvelope.parseFromString(governmentConnectionRequest, CONNECTION_REQUEST).extractMessage(newcomer).get()
-                .getDid()), IndyMessageTypes.VERINYM, newcomer).get().toJSON();
+        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(newcomerCodec.decryptMessage(MessageEnvelope.parseFromString(governmentConnectionRequest, CONNECTION_REQUEST)).get()
+                .getDid()), IndyMessageTypes.VERINYM).get().toJSON();
 
         // #step 4.2.5 t/m 4.2.8
         // Steward accepts verinym request from Faber and thus writes the new DID on the ledger
-        steward.acceptVerinymRequest(MessageEnvelope.parseFromString(verinymRequest, VERINYM).extractMessage(steward).get()).get();
+        steward.acceptVerinymRequest(stewardCodec.decryptMessage(MessageEnvelope.parseFromString(verinymRequest, VERINYM)).get()).get();
     }
 
     public boolean needsSeeding() {

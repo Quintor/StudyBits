@@ -5,34 +5,33 @@ import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
-import nl.quintor.studybits.indy.wrapper.*;
+import nl.quintor.studybits.indy.wrapper.IndyPool;
+import nl.quintor.studybits.indy.wrapper.IndyWallet;
+import nl.quintor.studybits.indy.wrapper.Prover;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
-import nl.quintor.studybits.indy.wrapper.MessageEnvelope;
-import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
-import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import nl.quintor.studybits.indy.wrapper.util.SeedUtil;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import nl.quintor.studybits.service.ExchangePositionService;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.hyperledger.indy.sdk.pool.Pool;
 import org.hyperledger.indy.sdk.IndyException;
-import org.junit.*;
+import org.hyperledger.indy.sdk.pool.Pool;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static io.restassured.RestAssured.given;
-import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CONNECTION_REQUEST;
-import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CONNECTION_RESPONSE;
-import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.VERINYM;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
@@ -45,6 +44,7 @@ public class ScenarioIT {
     static final String ENDPOINT_GENT = "http://localhost:8081";
     static IndyPool indyPool;
     static IndyWallet studentWallet;
+    static MessageEnvelopeCodec studentCodec;
     static SessionFilter sessionFilter = new SessionFilter();
 
     @BeforeClass
@@ -55,6 +55,8 @@ public class ScenarioIT {
         indyPool = new IndyPool(poolName);
 
         studentWallet = IndyWallet.create(indyPool, "student" + System.currentTimeMillis(), SeedUtil.generateSeed());
+
+        studentCodec = new MessageEnvelopeCodec(studentWallet);
 
         boolean ready = false;
         while (!ready) {
@@ -89,7 +91,7 @@ public class ScenarioIT {
                 .extract().as(MessageEnvelope.class);
 
         // Extract the connectionRequest from the Envelope
-        ConnectionRequest connectionRequest = connectionRequestEnvelope.extractMessage(null).get();
+        ConnectionRequest connectionRequest = studentCodec.decryptMessage(connectionRequestEnvelope).get();
 
         // New DID created by university
         log.debug("CONNECTION REQUEST DID: " + connectionRequest.getDid());
@@ -103,7 +105,7 @@ public class ScenarioIT {
         String studentDid = connectionResponse.getDid();
 
         // Put connectionResponse in an Envelope
-        MessageEnvelope connectionResponseEnvelope = MessageEnvelope.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, studentWallet).get();
+        MessageEnvelope connectionResponseEnvelope = studentCodec.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get();
 
         // Student sends the connectionResponse to the university and should receive a connectionAcknowledgement
         String result = givenCorrectHeaders(ENDPOINT_RUG)
@@ -116,7 +118,7 @@ public class ScenarioIT {
         MessageEnvelope<AuthcryptableString> connectionAcknowledgementEnvelope = MessageEnvelope.parseFromString(result, IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT);
 
         assertThat(connectionAcknowledgementEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
-        assertThat(connectionAcknowledgementEnvelope.extractMessage(studentWallet).get().getPayload(), is(equalTo("Rijksuniversiteit Groningen")));
+        assertThat(studentCodec.decryptMessage(connectionAcknowledgementEnvelope).get().getPayload(), is(equalTo("Rijksuniversiteit Groningen")));
     }
 
     @Test
@@ -129,7 +131,7 @@ public class ScenarioIT {
 
         assertThat(credentialOfferEnvelopes, arrayWithSize(equalTo(1)));
 
-        CredentialOffer credentialOffer = credentialOfferEnvelopes[0].extractMessage(studentWallet).get();
+        CredentialOffer credentialOffer = studentCodec.decryptMessage(credentialOfferEnvelopes[0]).get();
 
         assertThat(credentialOffer.getSchemaId(), notNullValue());
 
@@ -138,7 +140,7 @@ public class ScenarioIT {
 
         CredentialRequest credentialRequest = prover.createCredentialRequest(credentialOffer).get();
 
-        MessageEnvelope authcryptedCredentialRequestEnvelope = MessageEnvelope.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, studentWallet).get();
+        MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST).get();
 
         MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(authcryptedCredentialRequestEnvelope)
@@ -149,7 +151,7 @@ public class ScenarioIT {
 
         assertThat(credentialEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CREDENTIAL.getURN())));
 
-        CredentialWithRequest credentialWithRequest = credentialEnvelope.extractMessage(studentWallet).get();
+        CredentialWithRequest credentialWithRequest = studentCodec.decryptMessage(credentialEnvelope).get();
 
         prover.storeCredential(credentialWithRequest).get();
 
@@ -176,11 +178,11 @@ public class ScenarioIT {
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        ConnectionRequest connectionRequest = connectionRequestEnvelope.extractMessage(studentWallet).get();
+        ConnectionRequest connectionRequest = studentCodec.decryptMessage(connectionRequestEnvelope).get();
 
         ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
 
-        MessageEnvelope connectionResponseEnvelope = MessageEnvelope.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, studentWallet).get();
+        MessageEnvelope connectionResponseEnvelope = studentCodec.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get();
 
         MessageEnvelope<AuthcryptableString> connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
                 .body(connectionResponseEnvelope)
@@ -190,7 +192,7 @@ public class ScenarioIT {
                 .extract().as(MessageEnvelope.class);
 
         assertThat(connectionAcknowledgementEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
-        assertThat(connectionAcknowledgementEnvelope.extractMessage(studentWallet).get().getPayload(), is(equalTo("Universiteit Gent")));
+        assertThat(studentCodec.decryptMessage(connectionAcknowledgementEnvelope).get().getPayload(), is(equalTo("Universiteit Gent")));
 
         MessageEnvelope[] credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
                 .get("/agent/credential_offer")
@@ -209,7 +211,7 @@ public class ScenarioIT {
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        AuthcryptableExchangePositions authcryptableExchangePositions = exchangePositionsMessageEnvelope.extractMessage(studentWallet).get();
+        AuthcryptableExchangePositions authcryptableExchangePositions = studentCodec.decryptMessage(exchangePositionsMessageEnvelope).get();
 
         List<ExchangePositionService.ExchangePositionDto> exchangePositions = authcryptableExchangePositions.getExchangePositions();
 
@@ -227,7 +229,7 @@ public class ScenarioIT {
 
         Proof proof = prover.fulfillProofRequest(proofRequest, values).get();
 
-        MessageEnvelope proofEnvelope = MessageEnvelope.encryptMessage(proof, IndyMessageTypes.PROOF, prover).get();
+        MessageEnvelope proofEnvelope = studentCodec.encryptMessage(proof, IndyMessageTypes.PROOF).get();
 
         givenCorrectHeaders(ENDPOINT_GENT)
                 .body(proofEnvelope)
@@ -240,7 +242,7 @@ public class ScenarioIT {
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
-        authcryptableExchangePositions = exchangePositionsMessageEnvelope.extractMessage(studentWallet).get();
+        authcryptableExchangePositions = studentCodec.decryptMessage(exchangePositionsMessageEnvelope).get();
 
         exchangePositions = authcryptableExchangePositions.getExchangePositions();
 

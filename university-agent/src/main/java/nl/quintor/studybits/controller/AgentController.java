@@ -2,7 +2,7 @@ package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import nl.quintor.studybits.LedgerSeeder;
-import nl.quintor.studybits.indy.wrapper.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.service.AgentService;

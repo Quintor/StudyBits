@@ -8,11 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.entity.ExchangePosition;
 import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.indy.wrapper.IndyWallet;
-import nl.quintor.studybits.indy.wrapper.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.dto.AttributeInfo;
-import nl.quintor.studybits.indy.wrapper.dto.EncryptedMessage;
 import nl.quintor.studybits.indy.wrapper.dto.Filter;
 import nl.quintor.studybits.indy.wrapper.dto.ProofRequest;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
@@ -23,7 +23,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
-import java.nio.file.AccessDeniedException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -34,19 +33,25 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class ExchangePositionService {
-    @Autowired
-    private ExchangePositionRepository exchangePositionRepository;
+    private final ExchangePositionRepository exchangePositionRepository;
 
-    @Autowired
-    private IdentityService identityService;
+    private final IdentityService identityService;
 
-    @Autowired
-    private StudentService studentService;
+    private final StudentService studentService;
 
-    @Autowired
-    private IndyWallet universityWallet;
+    private final IndyWallet universityWallet;
+    private final MessageEnvelopeCodec universityCodec;
 
     private static final Random random = new Random();
+
+    @Autowired
+    public ExchangePositionService(ExchangePositionRepository exchangePositionRepository, IdentityService identityService, StudentService studentService, IndyWallet universityWallet) {
+        this.exchangePositionRepository = exchangePositionRepository;
+        this.identityService = identityService;
+        this.studentService = studentService;
+        this.universityWallet = universityWallet;
+        this.universityCodec = new MessageEnvelopeCodec(universityWallet);
+    }
 
     @Transactional
     public void createExchangePosition(String credDefId) throws JsonProcessingException {
@@ -100,7 +105,7 @@ public class ExchangePositionService {
                 }))
                 .collect(Collectors.toList());
 
-        return MessageEnvelope.encryptMessage(new AuthcryptableExchangePositions(exchangePositionDtos, student.getStudentDid()), StudyBitsMessageTypes.EXCHANGE_POSITIONS, universityWallet).get();
+        return universityCodec.encryptMessage(new AuthcryptableExchangePositions(exchangePositionDtos, student.getStudentDid()), StudyBitsMessageTypes.EXCHANGE_POSITIONS).get();
     }
 
     @Data

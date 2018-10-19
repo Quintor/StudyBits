@@ -8,7 +8,8 @@ import nl.quintor.studybits.indy.wrapper.TrustAnchor;
 import nl.quintor.studybits.indy.wrapper.Verifier;
 import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
-import nl.quintor.studybits.indy.wrapper.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import org.apache.commons.lang3.NotImplementedException;
 import org.hyperledger.indy.sdk.IndyException;
@@ -27,29 +28,37 @@ import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.*;
 @Slf4j
 public class AgentService {
 
-    @Autowired
-    private TrustAnchor universityTrustAnchor;
+    private final TrustAnchor universityTrustAnchor;
 
-    @Autowired
-    private Issuer universityIssuer;
+    private final Issuer universityIssuer;
 
-    @Autowired
-    private Verifier universityVerifier;
+    private final Verifier universityVerifier;
 
-    @Autowired
-    private IdentityService identityService;
+    private final IdentityService identityService;
 
-    @Autowired
-    private StudentService studentService;
+    private final StudentService studentService;
 
-    @Autowired
-    private CredentialDefinitionService credentialDefinitionService;
+    private final CredentialDefinitionService credentialDefinitionService;
 
-    @Autowired
-    private ExchangePositionService exchangePositionService;
+    private final ExchangePositionService exchangePositionService;
+
+    private final MessageEnvelopeCodec messageEnvelopeCodec;
 
     @Value("${nl.quintor.studybits.university.name}")
     private String universityName;
+
+    @Autowired
+    public AgentService(TrustAnchor universityTrustAnchor, Issuer universityIssuer, Verifier universityVerifier, IdentityService identityService, StudentService studentService, CredentialDefinitionService credentialDefinitionService, ExchangePositionService exchangePositionService) {
+        this.universityTrustAnchor = universityTrustAnchor;
+        this.universityIssuer = universityIssuer;
+        this.universityVerifier = universityVerifier;
+        this.identityService = identityService;
+        this.studentService = studentService;
+        this.credentialDefinitionService = credentialDefinitionService;
+        this.exchangePositionService = exchangePositionService;
+        this.messageEnvelopeCodec = new MessageEnvelopeCodec(universityIssuer);
+    }
+
 
     public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
         String messageTypeURN = messageEnvelope.getMessageType().getURN();
@@ -82,21 +91,21 @@ public class AgentService {
 
         studentService.setConnectionData(studentId, connectionRequest.getDid(), connectionRequest.getRequestNonce());
 
-        return MessageEnvelope.encryptMessage(connectionRequest, IndyMessageTypes.CONNECTION_REQUEST, null).get();
+        return messageEnvelopeCodec.encryptMessage(connectionRequest, IndyMessageTypes.CONNECTION_REQUEST).get();
     }
 
     public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         Student student = studentService.getStudentByStudentId(identityService.getStudentId());
         if (student != null && student.getTranscript() != null && !student.getTranscript().isProven()) {
             CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
-            return Collections.singletonList(MessageEnvelope.encryptMessage(credentialOffer, CREDENTIAL_OFFER, universityIssuer).get());
+            return Collections.singletonList(messageEnvelopeCodec.encryptMessage(credentialOffer, CREDENTIAL_OFFER).get());
         }
 
         return Collections.emptyList();
     }
 
     private MessageEnvelope handleConnectionResponse(MessageEnvelope<ConnectionResponse> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        ConnectionResponse connectionResponse = messageEnvelope.extractMessage(universityTrustAnchor).get();
+        ConnectionResponse connectionResponse = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
 
         studentService.setStudentDid(identityService.getStudentId(), connectionResponse.getDid());
         String studentUniversityDid = universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
@@ -105,11 +114,11 @@ public class AgentService {
 
         log.debug("Acknowledging with name: {}", universityName);
 
-        return MessageEnvelope.encryptMessage(new AuthcryptableString(universityName, connectionResponse.getDid()), CONNECTION_ACKNOWLEDGEMENT, universityTrustAnchor).get();
+        return messageEnvelopeCodec.encryptMessage(new AuthcryptableString(universityName, connectionResponse.getDid()), CONNECTION_ACKNOWLEDGEMENT).get();
     }
 
     private MessageEnvelope handleCredentialRequest(MessageEnvelope<CredentialRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
-        CredentialRequest credentialRequest = messageEnvelope.extractMessage(universityIssuer).get();
+        CredentialRequest credentialRequest = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
         log.debug("Decrypted request");
         Student student = studentService.getStudentByStudentDid(messageEnvelope.getDidOrNonce());
 
@@ -124,14 +133,14 @@ public class AgentService {
 
         studentService.proveTranscript(student.getStudentId());
 
-        return MessageEnvelope.encryptMessage(credentialWithRequest, CREDENTIAL, universityIssuer).get();
+        return messageEnvelopeCodec.encryptMessage(credentialWithRequest, CREDENTIAL).get();
     }
 
     private MessageEnvelope handleProof(MessageEnvelope<Proof> proofEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
         Student student = studentService.getStudentByStudentId(identityService.getStudentId());
         ProofRequest proofRequest = JSONUtil.mapper.readValue(student.getProofRequest(), ProofRequest.class);
 
-        Proof proof = proofEnvelope.extractMessage(universityVerifier).get();
+        Proof proof = messageEnvelopeCodec.decryptMessage(proofEnvelope).get();
 
         List<ProofAttribute> proofAttributes = universityVerifier.getVerifiedProofAttributes(proofRequest, proof).get();
 
