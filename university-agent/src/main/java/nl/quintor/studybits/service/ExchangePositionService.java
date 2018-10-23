@@ -9,13 +9,16 @@ import nl.quintor.studybits.entity.ExchangePosition;
 import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.indy.wrapper.IndyWallet;
 import nl.quintor.studybits.indy.wrapper.dto.AttributeInfo;
-import nl.quintor.studybits.indy.wrapper.dto.AuthcryptedMessage;
 import nl.quintor.studybits.indy.wrapper.dto.Filter;
 import nl.quintor.studybits.indy.wrapper.dto.ProofRequest;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
+import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
+import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
+import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import nl.quintor.studybits.repository.ExchangePositionRepository;
+import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
@@ -32,15 +35,12 @@ import java.util.stream.Collectors;
 public class ExchangePositionService {
     @Autowired
     private ExchangePositionRepository exchangePositionRepository;
-
     @Autowired
     private IdentityService identityService;
-
     @Autowired
     private StudentService studentService;
-
     @Autowired
-    private IndyWallet universityWallet;
+    private MessageEnvelopeCodec universityCodec;
 
     private static final Random random = new Random();
 
@@ -73,17 +73,18 @@ public class ExchangePositionService {
 
 
     @Transactional
-    public List<ExchangePositionDto> getAll() {
+    public MessageEnvelope<AuthcryptableExchangePositions> getAll() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         String studentId = identityService.getStudentId();
         log.debug("Getting exchange positions for studentId {}", studentId);
 
         Student student = studentService.getStudentByStudentId(studentId);
         log.debug("Getting exchange positions for student {}", student);
         if (student == null) {
-            return Collections.emptyList();
+            // TODO replace with method security
+            throw new IllegalStateException("Need to be authenticated");
         }
 
-        return exchangePositionRepository.findAll()
+        List<ExchangePositionDto> exchangePositionDtos = exchangePositionRepository.findAll()
                 .stream()
                 .map(AsyncUtil.wrapException(exchangePosition -> {
                     ProofRequest proofRequest = JSONUtil.mapper.readValue(exchangePosition.getProofRequestTemplate(), ProofRequest.class);
@@ -91,12 +92,11 @@ public class ExchangePositionService {
                     proofRequest.setNonce(Long.toString(Math.abs(random.nextLong())));
                     proofRequest.setTheirDid(student.getStudentDid());
                     studentService.setExchangePositionData(studentId, proofRequest.toJSON(), exchangePosition);
-                    return universityWallet.authEncrypt(proofRequest)
-                            .thenApply(
-                                    message -> new ExchangePositionDto(exchangePosition.getName(), message, exchangePosition.isFulfilled())
-                            ).get();
+                    return  new ExchangePositionDto(exchangePosition.getName(), proofRequest, exchangePosition.isFulfilled());
                 }))
                 .collect(Collectors.toList());
+
+        return universityCodec.encryptMessage(new AuthcryptableExchangePositions(exchangePositionDtos, student.getStudentDid()), StudyBitsMessageTypes.EXCHANGE_POSITIONS).get();
     }
 
     @Data
@@ -104,7 +104,7 @@ public class ExchangePositionService {
     @AllArgsConstructor
     public static class ExchangePositionDto {
         private String name;
-        private AuthcryptedMessage authcryptedProofRequest;
+        private ProofRequest proofRequest;
         private boolean fulfilled;
     }
 }

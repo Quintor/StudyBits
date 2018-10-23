@@ -22,8 +22,8 @@ services:
     network_mode: "host"
     environment:
     - TEST_POOL_IP=$TEST_POOL_IP
-    - SPRING_PROFILES_ACTIVE=mobile-test
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Rijksuniversiteit Groningen
+    - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES:-mobile-test}
     depends_on:
       quindy:
         condition: service_started
@@ -46,7 +46,7 @@ services:
     - TEST_POOL_IP=$TEST_POOL_IP
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Universiteit Gent
     - SERVER_PORT=8081
-    - SPRING_PROFILES_ACTIVE=mobile-test
+    - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES:-mobile-test}
     depends_on:
       quindy:
         condition: service_started
