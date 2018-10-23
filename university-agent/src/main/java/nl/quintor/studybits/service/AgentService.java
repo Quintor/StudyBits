@@ -57,10 +57,10 @@ public class AgentService {
             return handleConnectionResponse(MessageEnvelope.convertEnvelope(messageEnvelope, CONNECTION_RESPONSE));
         }
         else if (messageTypeURN.equals(CREDENTIAL_REQUEST.getURN())) {
-            return handleCredentialRequest(messageEnvelope);
+            return handleCredentialRequest(MessageEnvelope.convertEnvelope(messageEnvelope, CREDENTIAL_REQUEST));
         }
         else if (messageTypeURN.equals(PROOF.getURN())) {
-            return handleProof(messageEnvelope);
+            return handleProof(MessageEnvelope.convertEnvelope(messageEnvelope, PROOF));
         }
 
         throw new NotImplementedException("Processing of message type not supported: " + messageEnvelope.getMessageType());
