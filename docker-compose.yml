@@ -18,7 +18,7 @@ services:
   university-agent-rug:
     build:
       context: university-agent
-    command: mvn package spring-boot:run
+      dockerfile: deployment.docker
     network_mode: "host"
     environment:
     - TEST_POOL_IP=$TEST_POOL_IP
@@ -40,7 +40,7 @@ services:
   university-agent-gent:
     build:
       context: university-agent
-    command: mvn package spring-boot:run
+      dockerfile: deployment.docker
     network_mode: "host"
     environment:
     - TEST_POOL_IP=$TEST_POOL_IP
