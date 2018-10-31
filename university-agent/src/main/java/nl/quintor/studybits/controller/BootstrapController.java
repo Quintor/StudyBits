@@ -32,7 +32,7 @@ public class BootstrapController {
     @Autowired
     private Seeder seeder;
 
-    @Autowired
+    @Autowired(required = false)
     private LedgerSeeder ledgerSeeder;
 
     private String credDefId;
@@ -69,6 +69,6 @@ public class BootstrapController {
 
     @GetMapping("/ready")
     public boolean isReady() {
-        return !ledgerSeeder.needsSeeding();
+        return ledgerSeeder != null && !ledgerSeeder.needsSeeding();
     }
 }
