@@ -2,6 +2,7 @@ package nl.quintor.studybits.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
+import nl.quintor.studybits.LedgerSeeder;
 import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.indy.wrapper.Issuer;
 import nl.quintor.studybits.indy.wrapper.TrustAnchor;
@@ -47,8 +48,6 @@ public class AgentService {
     @Value("${nl.quintor.studybits.university.name}")
     private String universityName;
 
-
-
     public MessageEnvelope processMessage(MessageEnvelope messageEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
         String messageTypeURN = messageEnvelope.getMessageType().getURN();
 
@@ -57,10 +56,10 @@ public class AgentService {
             return handleConnectionResponse(MessageEnvelope.convertEnvelope(messageEnvelope, CONNECTION_RESPONSE));
         }
         else if (messageTypeURN.equals(CREDENTIAL_REQUEST.getURN())) {
-            return handleCredentialRequest(messageEnvelope);
+            return handleCredentialRequest(MessageEnvelope.convertEnvelope(messageEnvelope, CREDENTIAL_REQUEST));
         }
         else if (messageTypeURN.equals(PROOF.getURN())) {
-            return handleProof(messageEnvelope);
+            return handleProof(MessageEnvelope.convertEnvelope(messageEnvelope, PROOF));
         }
 
         throw new NotImplementedException("Processing of message type not supported: " + messageEnvelope.getMessageType());
@@ -83,14 +82,19 @@ public class AgentService {
         return messageEnvelopeCodec.encryptMessage(connectionRequest, IndyMessageTypes.CONNECTION_REQUEST).get();
     }
 
-    public List<MessageEnvelope> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+    public MessageEnvelope<CredentialOfferList> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+        CredentialOfferList credentialOffers = new CredentialOfferList();
+
         Student student = studentService.getStudentByStudentId(identityService.getStudentId());
-        if (student != null && student.getTranscript() != null && !student.getTranscript().isProven()) {
+        credentialOffers.setTheirDid(student.getStudentDid());
+
+        if (student.getTranscript() != null && !student.getTranscript().isProven()) {
             CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
-            return Collections.singletonList(messageEnvelopeCodec.encryptMessage(credentialOffer, CREDENTIAL_OFFER).get());
+            credentialOffers.addCredentialOffer(credentialOffer);
+            return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS).get();
         }
 
-        return Collections.emptyList();
+        return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS).get();
     }
 
     private MessageEnvelope handleConnectionResponse(MessageEnvelope<ConnectionResponse> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
@@ -122,15 +126,16 @@ public class AgentService {
 
         studentService.proveTranscript(student.getStudentId());
 
-        return messageEnvelopeCodec.encryptMessage(credentialWithRequest, CREDENTIAL).get();
+        return messageEnvelopeCodec.encryptMessage(credentialWithRequest, IndyMessageTypes.CREDENTIAL).get();
     }
 
     private MessageEnvelope handleProof(MessageEnvelope<Proof> proofEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
+        log.debug("Handling proof");
         Student student = studentService.getStudentByStudentId(identityService.getStudentId());
         ProofRequest proofRequest = JSONUtil.mapper.readValue(student.getProofRequest(), ProofRequest.class);
 
         Proof proof = messageEnvelopeCodec.decryptMessage(proofEnvelope).get();
-
+        log.debug("Proof: {}", proof);
         List<ProofAttribute> proofAttributes = universityVerifier.getVerifiedProofAttributes(proofRequest, proof).get();
 
 

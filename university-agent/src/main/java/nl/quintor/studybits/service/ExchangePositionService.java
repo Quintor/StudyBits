@@ -91,6 +91,7 @@ public class ExchangePositionService {
 
                     proofRequest.setNonce(Long.toString(Math.abs(random.nextLong())));
                     proofRequest.setTheirDid(student.getStudentDid());
+                    exchangePosition.setStudentDid(student.getStudentDid());
                     studentService.setExchangePositionData(studentId, proofRequest.toJSON(), exchangePosition);
                     return  new ExchangePositionDto(exchangePosition.getName(), proofRequest, exchangePosition.isFulfilled());
                 }))

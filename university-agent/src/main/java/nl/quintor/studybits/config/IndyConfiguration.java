@@ -21,6 +21,8 @@ import java.nio.file.Paths;
 public class IndyConfiguration {
     @Value("${nl.quintor.studybits.university.name}")
     private String universityName;
+    @Value("${nl.quintor.studybits.university.seed}")
+    private String universitySeed;
 
     @Bean
     public TrustAnchor universityTrustAnchor(IndyWallet universityWallet) throws Exception {
@@ -48,8 +50,9 @@ public class IndyConfiguration {
         StudyBitsMessageTypes.init();
         IndyMessageTypes.init();
         String name = universityName.replace(" ", "");
+        String seed = universitySeed;
         String poolName = PoolUtils.createPoolLedgerConfig(null);
         IndyPool indyPool = new IndyPool(poolName);
-        return IndyWallet.create(indyPool, name, StringUtils.leftPad(name, 32, '0'));
+        return IndyWallet.create(indyPool, name, seed);
     }
 }

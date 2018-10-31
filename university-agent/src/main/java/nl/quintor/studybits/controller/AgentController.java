@@ -2,6 +2,7 @@ package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import nl.quintor.studybits.LedgerSeeder;
+import nl.quintor.studybits.indy.wrapper.dto.CredentialOfferList;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
@@ -24,9 +25,6 @@ public class AgentController {
     @Autowired
     private ExchangePositionService exchangePositionService;
 
-    @Autowired
-    private LedgerSeeder ledgerSeeder;
-
     @PostMapping("/message")
     public MessageEnvelope processMessage(@RequestBody String message) throws IOException, IndyException, ExecutionException, InterruptedException {
         return agentService.processMessage(MessageEnvelope.parseFromString(message));
@@ -38,7 +36,7 @@ public class AgentController {
     }
 
     @GetMapping("/credential_offer")
-    public List<MessageEnvelope> credentialOffers() throws ExecutionException, InterruptedException, JsonProcessingException, IndyException {
+    public MessageEnvelope<CredentialOfferList> credentialOffers() throws ExecutionException, InterruptedException, JsonProcessingException, IndyException {
         return agentService.getCredentialOffers();
     }
 
