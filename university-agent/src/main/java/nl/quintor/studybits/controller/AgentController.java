@@ -42,5 +42,4 @@ public class AgentController {
     public MessageEnvelope<AuthcryptableExchangePositions> exchangePositions() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
         return exchangePositionService.getAll();
     }
-
 }

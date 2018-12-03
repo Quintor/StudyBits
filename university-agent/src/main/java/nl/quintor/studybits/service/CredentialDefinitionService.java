@@ -9,7 +9,6 @@ import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.persistence.GeneratedValue;
 import java.util.concurrent.ExecutionException;
 
 @Component
