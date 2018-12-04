@@ -25,17 +25,17 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static io.restassured.RestAssured.given;
+import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CREDENTIAL_OFFERS;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.CoreMatchers.is;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Slf4j
@@ -129,10 +129,12 @@ public class ScenarioIT {
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-//          #TODO: FIX THIS LINE
-//        assertThat(credentialOfferEnvelopes, arrayWithSize(equalTo(1)));
+        assertThat(credentialOfferEnvelopes.getMessageType(), is(CREDENTIAL_OFFERS));
 
         CredentialOfferList credentialOffers = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
+
+        assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(false));
+
         CredentialOffer credentialOffer = credentialOffers.getCredentialOffers().get(0);
         credentialOffer.setTheirDid(credentialOfferEnvelopes.getDidOrNonce());
         assertThat(credentialOffer.getSchemaId(), notNullValue());
@@ -168,9 +170,8 @@ public class ScenarioIT {
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
-
-//        #TODO: FIX THIS LINE
-//        assertThat(Arrays.asList(credentialOffers.getCredentialOffers()), hasSize(0));
+        credentialOffers = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
+        assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(true));
     }
 
     @Test
@@ -197,14 +198,14 @@ public class ScenarioIT {
         assertThat(connectionAcknowledgementEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
         assertThat(studentCodec.decryptMessage(connectionAcknowledgementEnvelope).get().getPayload(), is(equalTo("Universiteit Gent")));
 
-        MessageEnvelope credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
+        MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
                 .get("/agent/credential_offer")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-//        #TODO: FIX THIS LINE
-//        assertThat(Arrays.asList(credentialOfferEnvelopes), hasSize(0));
+        CredentialOfferList credentialOffers = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
+        assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(true));
     }
 
     @Test
