@@ -42,7 +42,6 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -101,11 +100,6 @@
             <version>2.5</version>
         </dependency>
 
-        <!--<dependency>-->
-            <!--<groupId>org.hibernate</groupId>-->
-            <!--<artifactId>hibernate-core</artifactId>-->
-            <!--<version>5.4.0.CR2</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
@@ -128,21 +122,6 @@
             <artifactId>jaxb-api</artifactId>
             <version>2.2.11</version>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>javax.activation</groupId>-->
-            <!--<artifactId>activation</artifactId>-->
-            <!--<version>1.1.1</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>javax.persistence</groupId>-->
-            <!--<artifactId>persistence-api</artifactId>-->
-            <!--<version>1.0.2</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.glassfish.jaxb</groupId>-->
-            <!--<artifactId>jaxb-runtime</artifactId>-->
-            <!--<version>2.4.0-b180830.0438</version>-->
-        <!--</dependency>-->
     </dependencies>
 
     <build>
@@ -172,17 +151,6 @@
                     </dependency>
                 </dependencies>
             </plugin>
-            <!--<plugin>-->
-                <!--<artifactId>maven-surefire-plugin</artifactId>-->
-                <!--<version>2.21.0</version>-->
-                <!--<dependencies>-->
-                    <!--<dependency>-->
-                        <!--<groupId>org.ow2.asm</groupId>-->
-                        <!--<artifactId>asm</artifactId>-->
-                        <!--<version>6.2</version>-->
-                    <!--</dependency>-->
-                <!--</dependencies>-->
-            <!--</plugin>-->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -221,11 +189,4 @@
             </plugin>
         </plugins>
     </build>
-    <!--<repositories>-->
-        <!--<repository>-->
-            <!--<id>jvnet-nexus-staging</id>-->
-            <!--<url>http://maven.java.net/content/repositories/staging/</url>-->
-            <!--<layout>default</layout>-->
-        <!--</repository>-->
-    <!--</repositories>-->
 </project>
