@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static io.restassured.RestAssured.given;
+import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CONNECTION_REQUEST;
+import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CONNECTION_RESPONSE;
 import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CREDENTIAL_OFFERS;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -82,43 +84,27 @@ public class ScenarioIT {
         StudyBitsMessageTypes.init();
         IndyMessageTypes.init();
 
-        // Student receives a connectionRequest from the University
-        MessageEnvelope<ConnectionRequest> connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+        String universityVerinymDid = "SYqJSzcfsJMhSt7qjcQ8CC";
+
+        // Student creates a connectionRequest
+        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest(universityVerinymDid).get();
+
+        // Student logs in to university
+        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .queryParam("student_id", "12345678")
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST).get().toJSON())
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        // Extract the connectionRequest from the Envelope
-        ConnectionRequest connectionRequest = studentCodec.decryptMessage(connectionRequestEnvelope).get();
-
-        // New DID created by university
-        log.debug("CONNECTION REQUEST DID: " + connectionRequest.getDid());
-
-        String universityDid = connectionRequest.getDid();
-        // Student accepts the connectionRequest from the university and creates a connectionResponse
-        ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
-
         //New DID created by student
-        log.debug("CONNECTION RESPONSE DID: " + connectionResponse.getDid());
-        String studentDid = connectionResponse.getDid();
+        String studentDid = connectionRequest.getDid();
 
-        // Put connectionResponse in an Envelope
-        MessageEnvelope connectionResponseEnvelope = studentCodec.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get();
+        // Decrypt and accept connection response
+        studentWallet.acceptConnectionResponse(studentCodec.decryptMessage(connectionResponseMessageEnvelope).get(), connectionResponseMessageEnvelope.getDid()).get();
 
-        // Student sends the connectionResponse to the university and should receive a connectionAcknowledgement
-        String result = givenCorrectHeaders(ENDPOINT_RUG)
-                .body(connectionResponseEnvelope)
-                .post("/agent/message")
-                .then()
-                .assertThat().statusCode(200)
-                .extract().response().asString();
-
-        MessageEnvelope<AuthcryptableString> connectionAcknowledgementEnvelope = MessageEnvelope.parseFromString(result, IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT);
-
-        assertThat(connectionAcknowledgementEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
-        assertThat(studentCodec.decryptMessage(connectionAcknowledgementEnvelope).get().getPayload(), is(equalTo("Rijksuniversiteit Groningen")));
+        // TODO: Fix getting the name through did-endpoint resolution
     }
 
     @Test
@@ -136,7 +122,7 @@ public class ScenarioIT {
         assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(false));
 
         CredentialOffer credentialOffer = credentialOffers.getCredentialOffers().get(0);
-        credentialOffer.setTheirDid(credentialOfferEnvelopes.getDidOrNonce());
+        credentialOffer.setTheirDid(credentialOfferEnvelopes.getDid());
         assertThat(credentialOffer.getSchemaId(), notNullValue());
 
         Prover prover = new Prover(studentWallet, "master_secret_name");
@@ -176,27 +162,26 @@ public class ScenarioIT {
 
     @Test
     public void test3_ConnectGent() throws IndyException, ExecutionException, InterruptedException, IOException {
-        MessageEnvelope<ConnectionRequest> connectionRequestEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+        String universityVerinymDid = "Vumgc4B8hFq7n5VNAnfDAL";
+
+        // Student creates a connectionRequest
+        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest(universityVerinymDid).get();
+
+        // Student logs in to university
+        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST).get().toJSON())
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        ConnectionRequest connectionRequest = studentCodec.decryptMessage(connectionRequestEnvelope).get();
+        //New DID created by student
+        String studentDid = connectionRequest.getDid();
 
-        ConnectionResponse connectionResponse = studentWallet.acceptConnectionRequest(connectionRequest).get();
+        // Decrypt and accept connection response
+        studentWallet.acceptConnectionResponse(studentCodec.decryptMessage(connectionResponseMessageEnvelope).get(), connectionResponseMessageEnvelope.getDid());
 
-        MessageEnvelope connectionResponseEnvelope = studentCodec.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get();
-
-        MessageEnvelope<AuthcryptableString> connectionAcknowledgementEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
-                .body(connectionResponseEnvelope)
-                .post("/agent/message")
-                .then()
-                .assertThat().statusCode(200)
-                .extract().as(MessageEnvelope.class);
-
-        assertThat(connectionAcknowledgementEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CONNECTION_ACKNOWLEDGEMENT.getURN())));
-        assertThat(studentCodec.decryptMessage(connectionAcknowledgementEnvelope).get().getPayload(), is(equalTo("Universiteit Gent")));
+        // TODO: Fix getting the name through did-endpoint resolution
 
         MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
                 .get("/agent/credential_offer")

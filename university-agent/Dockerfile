@@ -29,5 +29,6 @@ RUN mvn install:install-file -Dfile=/quindy/quindy.jar  -DpomFile=/quindy/pom.xm
 
 ADD pom.xml /
 RUN mvn package
+
 ADD . /
 CMD mvn verify

@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface StudentRepository extends JpaRepository<Student, Long> {
-    public Student getStudentByRequestNonce(String requestNonce);
     public Student getStudentByStudentId(String studentId);
     public Student getStudentByStudentDid(String studentDid);
 }

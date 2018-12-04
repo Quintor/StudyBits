@@ -6,15 +6,11 @@ import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
-import nl.quintor.studybits.indy.wrapper.util.AsyncUtil;
-import nl.quintor.studybits.indy.wrapper.util.JSONUtil;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import nl.quintor.studybits.repository.StudentRepository;
 import nl.quintor.studybits.service.CredentialDefinitionService;
 import org.apache.commons.lang3.StringUtils;
 import org.hyperledger.indy.sdk.IndyException;
-import org.hyperledger.indy.sdk.anoncreds.CredDefAlreadyExistsException;
-import org.hyperledger.indy.sdk.ledger.LedgerInvalidTransactionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -62,6 +58,8 @@ public class LedgerSeeder {
 
             onboardIssuer(steward, university);
 
+            log.info("Initialized university with did {}", university.getMainDid());
+
 
 
             Issuer stewardIssuer = new Issuer(stewardWallet);
@@ -76,9 +74,6 @@ public class LedgerSeeder {
                 response = restTemplate.postForEntity("http://localhost:8081/bootstrap/exchange_position/" + credentialDefinitionService.getCredentialDefinitionId(), null, String.class);
             }
 
-
-
-
             done = true;
             log.info("Finished seeding ledger");
         }
@@ -91,31 +86,34 @@ public class LedgerSeeder {
 
         // Connecting newcomer with Steward
 
-        // Create new DID (For steward_newcomer connection) and send NYM request to ledger
-        String governmentConnectionRequest = new MessageEnvelopeCodec(null).encryptMessage(steward.createConnectionRequest(newcomer.getName(), "TRUST_ANCHOR").get(),
+        // We revert the order from the tutorial, since we use the anoncryption from the verinym
+
+        // Create connection request for steward
+        String connectionRequestString = newcomerCodec.encryptMessage(newcomer.createConnectionRequest(steward.getMainDid()).get(),
                 IndyMessageTypes.CONNECTION_REQUEST).get().toJSON();
 
-        // Steward sends connection request to newcomer
-        ConnectionRequest connectionRequest = newcomerCodec.decryptMessage(MessageEnvelope.parseFromString(governmentConnectionRequest, CONNECTION_REQUEST)).get();
+        // Steward decrypts connection request
+        ConnectionRequest connectionRequest = stewardCodec.decryptMessage(MessageEnvelope.parseFromString(connectionRequestString, CONNECTION_REQUEST)).get();
 
-        // newcomer accepts the connection request from Steward
-        ConnectionResponse newcomerConnectionResponse = newcomer.acceptConnectionRequest(connectionRequest).get();
+        // Steward accepts connection request
+        ConnectionResponse newcomerConnectionResponse = steward.acceptConnectionRequest(connectionRequest).get();
 
-        // newcomer creates a connection response with its created DID and Nonce from the received request from Steward
-        String newcomerConnectionResponseString =  newcomerCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get().toJSON();
+        // Steward sends a connection response
+        String newcomerConnectionResponseString =  stewardCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get().toJSON();
 
-        // Steward decrypts the anonymously encrypted message from newcomer
-        ConnectionResponse connectionResponse = stewardCodec.decryptMessage(MessageEnvelope.parseFromString(newcomerConnectionResponseString, CONNECTION_RESPONSE)).get();
 
-        // Steward authenticates newcomer
-        // Steward sends the NYM Transaction for newcomer's DID to the ledger
-        steward.acceptConnectionResponse(connectionResponse).get();
+        MessageEnvelope<ConnectionResponse> connectionResponseEnvelope = MessageEnvelope.parseFromString(newcomerConnectionResponseString, CONNECTION_RESPONSE);
+        // Newcomer decrypts the connection response
+        ConnectionResponse connectionResponse = newcomerCodec.decryptMessage(connectionResponseEnvelope).get();
 
-        // newcomer needs a new DID to interact with identiy owners, thus create a new DID request steward to write on ledger
-        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(newcomerCodec.decryptMessage(MessageEnvelope.parseFromString(governmentConnectionRequest, CONNECTION_REQUEST)).get()
-                .getDid()), IndyMessageTypes.VERINYM).get().toJSON();
+        // Newcomer accepts connection response
+        newcomer.acceptConnectionResponse(connectionResponse, connectionResponseEnvelope.getDid()).get();
 
-        // Steward accepts verinym request from newcomer and thus writes the new DID on the ledger
+        // Faber needs a new DID to interact with identity owners, thus create a new DID request steward to write on ledger
+        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(connectionResponse.getDid()), IndyMessageTypes.VERINYM).get().toJSON();
+
+        // #step 4.2.5 t/m 4.2.8
+        // Steward accepts verinym request from Faber and thus writes the new DID on the ledger
         steward.acceptVerinymRequest(stewardCodec.decryptMessage(MessageEnvelope.parseFromString(verinymRequest, VERINYM)).get()).get();
     }
 
