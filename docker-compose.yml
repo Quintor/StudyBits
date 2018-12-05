@@ -47,7 +47,6 @@ services:
     - NL_QUINTOR_STUDYBITS_UNIVERSITY_NAME=Universiteit Gent
     - SERVER_PORT=8081
     - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES:-mobile-test}
-    - RUST_LOG=debug
     depends_on:
       quindy:
         condition: service_started
