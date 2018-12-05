@@ -54,7 +54,7 @@ public class IndyConfiguration {
         log.debug("Initializing wallet using name {}", universityName);
 
         String name = universityName.replace(" ", "");
-        String seed = StringUtils.leftPad(universityName.replace(" ", ""), 32, '0');
+        String seed = StringUtils.leftPad(name, 32, '0');
         String poolName = PoolUtils.createPoolLedgerConfig(null);
         IndyPool indyPool = new IndyPool(poolName);
         return IndyWallet.create(indyPool, name, seed);
