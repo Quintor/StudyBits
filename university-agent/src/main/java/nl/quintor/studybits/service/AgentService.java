@@ -77,15 +77,8 @@ public class AgentService {
             if(studentService.matchPassword(password, student.getPassword())) {
                 //Check wheter the student already connected with the university before
                 if(student.hasDid()) {
-                    log.debug("AAAAAAA: " + messageEnvelope.getDid());
-                    log.debug("BBBBBBB: " + student.getStudentDid());
-                    //#TODO: Find the right did to check on, this is not the correct DID. Or the DID is not set right in the repository in seed
-                    if(connectionRequest.getDid().equals(student.getStudentDid())) {
-                        //Acknowledged
-                        //#TODO: What now?
-                    } else {
-                        throw new AccessDeniedException("Access denied for student " + studentId + ". DID does not match.");
-                    }
+                    //Conflict, student should request a reset
+                    throw new AccessDeniedException("Access denied for student " + studentId + ". DID already exists.");
                 } else {
                     //Student applied new DID
                     studentService.setStudentDid(studentId, connectionRequest.getDid());
