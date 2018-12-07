@@ -17,8 +17,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import org.springframework.security.access.AccessDeniedException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -33,8 +35,6 @@ public class AgentService {
     private Issuer universityIssuer;
     @Autowired
     private Verifier universityVerifier;
-    @Autowired
-    private IdentityService identityService;
     @Autowired
     private StudentService studentService;
     @Autowired
@@ -61,19 +61,58 @@ public class AgentService {
         throw new NotImplementedException("Processing of message type not supported: " + messageEnvelope.getMessageType());
     }
 
-    public MessageEnvelope<ConnectionResponse> login(String studentId, MessageEnvelope<ConnectionRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+    // Student sets up a connection with university agent
+    public MessageEnvelope<ConnectionResponse> login(String studentId, String password, MessageEnvelope<ConnectionRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException, AccessDeniedException {
         Student student = studentService.getStudentByStudentId(studentId);
 
-        if (student == null) {
-            student = studentService.createStudent();
-            studentId = student.getStudentId();
-        }
-
-        log.debug("Setting studentId in identityService to {}", studentId);
-        identityService.setStudentId(studentId);
+        log.debug("StudentID: "+ studentId);
 
         ConnectionRequest connectionRequest = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
-        studentService.setStudentDid(studentId, connectionRequest.getDid());
+
+        // If there is no student the login message, create one for future purposes.
+        if (student == null) {
+            student = studentService.createStudent(null, "", connectionRequest.getDid());
+            studentId = student.getStudentId();
+        } else { // If a student exists in the login message then login
+            if(studentService.matchPassword(password, student.getPassword())) {
+                //Check wheter the student already connected with the university before
+                if(student.hasDid()) {
+                    log.debug("AAAAAAA: " + messageEnvelope.getDid());
+                    log.debug("BBBBBBB: " + student.getStudentDid());
+                    //#TODO: Find the right did to check on, this is not the correct DID. Or the DID is not set right in the repository in seed
+                    if(connectionRequest.getDid().equals(student.getStudentDid())) {
+                        //Acknowledged
+                        //#TODO: What now?
+                    } else {
+                        throw new AccessDeniedException("Access denied for student " + studentId + ". DID does not match.");
+                    }
+                } else {
+                    //Student applied new DID
+                    studentService.setStudentDid(studentId, connectionRequest.getDid());
+                }
+            }else { //Login is not valid
+                throw new AccessDeniedException("Access denied for student " + studentId +  ". incorrect Student ID or Password." );
+            }
+
+
+
+            //Check wheter the student already connected with the university before
+//            if(student.hasDid()){
+//                // Match the student login and DID
+//                if(studentService.matchPassword(password, student.getPassword()) && connectionRequest.getDid().equals(student.getStudentDid())) {
+//                    //Acknowledged
+//                } else { //Login or DID not valid
+//                    throw new AccessDeniedException("Access denied for student " + studentId);
+//                }
+//            } else {
+//                if(studentService.matchPassword(password, student.getPassword())) {
+//                    //If there is no DID set yet then set one
+//                    studentService.setStudentDid(studentId, connectionRequest.getDid());
+//                } else { //Login is not valid
+//                    throw new AccessDeniedException("Access denied for student " + studentId);
+//                }
+//            }
+        }
 
 
         ConnectionResponse connectionResponse = universityTrustAnchor.acceptConnectionRequest(connectionRequest).get();
@@ -85,14 +124,14 @@ public class AgentService {
     public MessageEnvelope<CredentialOfferList> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         CredentialOfferList credentialOffers = new CredentialOfferList();
 
-        Student student = studentService.getStudentByStudentId(identityService.getStudentId());
-        credentialOffers.setTheirDid(student.getStudentDid());
+//        Student student = studentService.getStudentByStudentId(identityService.getStudentId());
+//        credentialOffers.setTheirDid(student.getStudentDid());
 
-        if (student.getTranscript() != null && !student.getTranscript().isProven()) {
-            CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
-            credentialOffers.addCredentialOffer(credentialOffer);
-            return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS).get();
-        }
+//        if (student.getTranscript() != null && !student.getTranscript().isProven()) {
+//            CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), student.getStudentDid()).get();
+//            credentialOffers.addCredentialOffer(credentialOffer);
+//            return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS).get();
+//        }
 
         return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS).get();
     }
@@ -118,15 +157,15 @@ public class AgentService {
 
     private MessageEnvelope handleProof(MessageEnvelope<Proof> proofEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
         log.debug("Handling proof");
-        Student student = studentService.getStudentByStudentId(identityService.getStudentId());
-        ProofRequest proofRequest = JSONUtil.mapper.readValue(student.getProofRequest(), ProofRequest.class);
-
-        Proof proof = messageEnvelopeCodec.decryptMessage(proofEnvelope).get();
-        log.debug("Proof: {}", proof);
-        List<ProofAttribute> proofAttributes = universityVerifier.getVerifiedProofAttributes(proofRequest, proof).get();
-
-
-        exchangePositionService.fullfillPosition(student.getExchangePosition().getId());
+//        Student student = studentService.getStudentByStudentId(identityService.getStudentId());
+//        ProofRequest proofRequest = JSONUtil.mapper.readValue(student.getProofRequest(), ProofRequest.class);
+//
+//        Proof proof = messageEnvelopeCodec.decryptMessage(proofEnvelope).get();
+//        log.debug("Proof: {}", proof);
+//        List<ProofAttribute> proofAttributes = universityVerifier.getVerifiedProofAttributes(proofRequest, proof).get();
+//
+//
+//        exchangePositionService.fullfillPosition(student.getExchangePosition().getId());
         return null;
     }
 }

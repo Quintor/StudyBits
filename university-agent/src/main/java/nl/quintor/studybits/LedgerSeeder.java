@@ -70,8 +70,8 @@ public class LedgerSeeder {
 
                 RestTemplate restTemplate = new RestTemplate();
 
-                ResponseEntity<String> response = restTemplate.postForEntity("http://localhost:8081/bootstrap/credential_definition/" + schemaId, null, String.class);
-                response = restTemplate.postForEntity("http://localhost:8081/bootstrap/exchange_position/" + credentialDefinitionService.getCredentialDefinitionId(), null, String.class);
+//                ResponseEntity<String> response = restTemplate.postForEntity("http://localhost:8081/bootstrap/credential_definition/" + schemaId, null, String.class);
+//                response = restTemplate.postForEntity("http://localhost:8081/bootstrap/exchange_position/" + credentialDefinitionService.getCredentialDefinitionId(), null, String.class);
             }
 
             done = true;

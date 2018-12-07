@@ -6,6 +6,8 @@ import nl.quintor.studybits.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.util.UUID;
@@ -14,6 +16,8 @@ import java.util.UUID;
 public class StudentService {
     @Autowired
     private StudentRepository studentRepository;
+    @Autowired
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Transactional
     public void setConnectionData(String studentId, String myDid) {
@@ -75,5 +79,24 @@ public class StudentService {
         student.setStudentId(UUID.randomUUID().toString());
 
         return studentRepository.saveAndFlush(student);
+    }
+
+    @Transactional
+    public Student createStudent(String id, String password, String did) {
+        Student student = new Student();
+        student.setStudentId(id);
+        String passwordHash = bCryptPasswordEncoder.encode(password);
+        student.setPassword(passwordHash);
+        student.setStudentDid(did);
+
+        return studentRepository.saveAndFlush(student);
+    }
+
+    public Boolean matchPassword(String password, String password2) {
+        if(bCryptPasswordEncoder.matches(password, password2)) {
+            return true;
+        }
+
+        return false;
     }
 }
