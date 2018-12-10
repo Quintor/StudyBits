@@ -69,9 +69,9 @@ public class AgentService {
 
         ConnectionRequest connectionRequest = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
 
-        // If there is no student the login message, create one for future purposes.
+        // If there is no student in the login message, create one for future purposes.
         if (student == null) {
-            student = studentService.createStudent(null, "", connectionRequest.getDid());
+            student = studentService.createStudent(UUID.randomUUID().toString(), "", connectionRequest.getDid());
             studentId = student.getStudentId();
         } else { // If a student exists in the login message then login
             if(studentService.matchPassword(password, student.getPassword())) {
@@ -86,25 +86,6 @@ public class AgentService {
             }else { //Login is not valid
                 throw new AccessDeniedException("Access denied for student " + studentId +  ". incorrect Student ID or Password." );
             }
-
-
-
-            //Check wheter the student already connected with the university before
-//            if(student.hasDid()){
-//                // Match the student login and DID
-//                if(studentService.matchPassword(password, student.getPassword()) && connectionRequest.getDid().equals(student.getStudentDid())) {
-//                    //Acknowledged
-//                } else { //Login or DID not valid
-//                    throw new AccessDeniedException("Access denied for student " + studentId);
-//                }
-//            } else {
-//                if(studentService.matchPassword(password, student.getPassword())) {
-//                    //If there is no DID set yet then set one
-//                    studentService.setStudentDid(studentId, connectionRequest.getDid());
-//                } else { //Login is not valid
-//                    throw new AccessDeniedException("Access denied for student " + studentId);
-//                }
-//            }
         }
 
 

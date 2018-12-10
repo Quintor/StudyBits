@@ -45,7 +45,7 @@ public class Seeder {
                 student.setFirstName("Lisa");
                 student.setLastName("Veren");
                 student.setPassword(bCryptPasswordEncoder.encode("test1234"));
-                student.setStudentDid("SYqJSzcfsJMhSt7qjcQ8CC");
+                student.setStudentDid(null);
                 student.setTranscript(new Transcript("Bachelor of Arts, Marketing", "enrolled", "8", false));
                 studentRepository.saveAndFlush(student);
             }

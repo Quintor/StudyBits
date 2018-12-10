@@ -93,10 +93,6 @@ public class StudentService {
     }
 
     public Boolean matchPassword(String password, String password2) {
-        if(bCryptPasswordEncoder.matches(password, password2)) {
-            return true;
-        }
-
-        return false;
+       return bCryptPasswordEncoder.matches(password, password2);
     }
 }
