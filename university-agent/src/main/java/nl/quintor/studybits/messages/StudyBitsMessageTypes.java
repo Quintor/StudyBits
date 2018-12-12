@@ -13,7 +13,7 @@ public class StudyBitsMessageTypes {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
 
     public static MessageType<AuthcryptableExchangePositions> EXCHANGE_POSITIONS = new IndyMessageTypes.StandardMessageType<>(
-            STUDYBITS_URN_PREFIX + "exchange_position/1.0/exchangePositions", MessageType.Encryption.AUTHCRYPTED, null, AuthcryptableExchangePositions.class);
+            STUDYBITS_URN_PREFIX + "exchange_position/1.0/exchangePositions", MessageType.Encryption.AUTHCRYPTED, AuthcryptableExchangePositions.class);
 
     public static void init() {
         log.debug("Trying to initialize message types");

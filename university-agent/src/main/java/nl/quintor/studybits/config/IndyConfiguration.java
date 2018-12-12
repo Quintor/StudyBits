@@ -1,5 +1,6 @@
 package nl.quintor.studybits.config;
 
+import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
@@ -18,11 +19,11 @@ import java.io.File;
 import java.nio.file.Paths;
 
 @Configuration
+@Slf4j
 public class IndyConfiguration {
     @Value("${nl.quintor.studybits.university.name}")
     private String universityName;
-    @Value("${nl.quintor.studybits.university.seed}")
-    private String universitySeed;
+
 
     @Bean
     public TrustAnchor universityTrustAnchor(IndyWallet universityWallet) throws Exception {
@@ -49,8 +50,11 @@ public class IndyConfiguration {
         Pool.setProtocolVersion(PoolUtils.PROTOCOL_VERSION).get();
         StudyBitsMessageTypes.init();
         IndyMessageTypes.init();
+
+        log.debug("Initializing wallet using name {}", universityName);
+
         String name = universityName.replace(" ", "");
-        String seed = universitySeed;
+        String seed = StringUtils.leftPad(name, 32, '0');
         String poolName = PoolUtils.createPoolLedgerConfig(null);
         IndyPool indyPool = new IndyPool(poolName);
         return IndyWallet.create(indyPool, name, seed);

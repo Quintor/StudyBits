@@ -16,7 +16,7 @@ public class StudentService {
     private StudentRepository studentRepository;
 
     @Transactional
-    public void setConnectionData(String studentId, String myDid, String requestNonce) {
+    public void setConnectionData(String studentId, String myDid) {
         Student student = studentRepository.getStudentByStudentId(studentId);
 
         if (student == null) {
@@ -24,7 +24,6 @@ public class StudentService {
         }
 
         student.setMyDid(myDid);
-        student.setRequestNonce(requestNonce);
         studentRepository.saveAndFlush(student);
     }
 
@@ -36,11 +35,6 @@ public class StudentService {
     @Transactional
     public Student getStudentByStudentDid(String studentDid) {
         return studentRepository.getStudentByStudentDid(studentDid);
-    }
-
-    @Transactional
-    public String getMyDidByRequestNonce(String requestNonce) {
-        return studentRepository.getStudentByRequestNonce(requestNonce).getMyDid();
     }
 
     @Transactional

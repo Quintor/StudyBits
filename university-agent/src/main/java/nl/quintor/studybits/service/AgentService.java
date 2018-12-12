@@ -2,7 +2,6 @@ package nl.quintor.studybits.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
-import nl.quintor.studybits.LedgerSeeder;
 import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.indy.wrapper.Issuer;
 import nl.quintor.studybits.indy.wrapper.TrustAnchor;
@@ -52,10 +51,7 @@ public class AgentService {
         String messageTypeURN = messageEnvelope.getMessageType().getURN();
 
 
-        if (messageTypeURN.equals(CONNECTION_RESPONSE.getURN())) {
-            return handleConnectionResponse(MessageEnvelope.convertEnvelope(messageEnvelope, CONNECTION_RESPONSE));
-        }
-        else if (messageTypeURN.equals(CREDENTIAL_REQUEST.getURN())) {
+        if (messageTypeURN.equals(CREDENTIAL_REQUEST.getURN())) {
             return handleCredentialRequest(MessageEnvelope.convertEnvelope(messageEnvelope, CREDENTIAL_REQUEST));
         }
         else if (messageTypeURN.equals(PROOF.getURN())) {
@@ -65,7 +61,7 @@ public class AgentService {
         throw new NotImplementedException("Processing of message type not supported: " + messageEnvelope.getMessageType());
     }
 
-    public MessageEnvelope login(String studentId) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+    public MessageEnvelope<ConnectionResponse> login(String studentId, MessageEnvelope<ConnectionRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
         Student student = studentService.getStudentByStudentId(studentId);
 
         if (student == null) {
@@ -75,11 +71,15 @@ public class AgentService {
 
         log.debug("Setting studentId in identityService to {}", studentId);
         identityService.setStudentId(studentId);
-        ConnectionRequest connectionRequest = universityTrustAnchor.createConnectionRequest(studentId, null).get();
 
-        studentService.setConnectionData(studentId, connectionRequest.getDid(), connectionRequest.getRequestNonce());
+        ConnectionRequest connectionRequest = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
+        studentService.setStudentDid(studentId, connectionRequest.getDid());
 
-        return messageEnvelopeCodec.encryptMessage(connectionRequest, IndyMessageTypes.CONNECTION_REQUEST).get();
+
+        ConnectionResponse connectionResponse = universityTrustAnchor.acceptConnectionRequest(connectionRequest).get();
+        studentService.setConnectionData(studentId, connectionResponse.getDid());
+
+        return messageEnvelopeCodec.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get();
     }
 
     public MessageEnvelope<CredentialOfferList> getCredentialOffers() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
@@ -97,23 +97,10 @@ public class AgentService {
         return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS).get();
     }
 
-    private MessageEnvelope handleConnectionResponse(MessageEnvelope<ConnectionResponse> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        ConnectionResponse connectionResponse = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
-
-        studentService.setStudentDid(identityService.getStudentId(), connectionResponse.getDid());
-        String studentUniversityDid = universityTrustAnchor.acceptConnectionResponse(connectionResponse).get();
-
-        log.debug("studentUniversityDid: "  + studentUniversityDid);
-
-        log.debug("Acknowledging with name: {}", universityName);
-
-        return messageEnvelopeCodec.encryptMessage(new AuthcryptableString(universityName, connectionResponse.getDid()), CONNECTION_ACKNOWLEDGEMENT).get();
-    }
-
     private MessageEnvelope handleCredentialRequest(MessageEnvelope<CredentialRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, UnsupportedEncodingException, JsonProcessingException {
         CredentialRequest credentialRequest = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
         log.debug("Decrypted request");
-        Student student = studentService.getStudentByStudentDid(messageEnvelope.getDidOrNonce());
+        Student student = studentService.getStudentByStudentDid(messageEnvelope.getDid());
 
         Map<String, Object> values = new HashMap<>();
         values.put("first_name", student.getFirstName());

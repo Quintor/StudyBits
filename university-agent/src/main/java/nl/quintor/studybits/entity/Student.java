@@ -24,9 +24,6 @@ public class Student {
     @Column
     private String lastName;
 
-    @Column
-    private String requestNonce;
-
     @Column(unique = true)
     private String studentDid;
 

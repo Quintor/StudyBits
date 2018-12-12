@@ -2,6 +2,7 @@ package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import nl.quintor.studybits.indy.wrapper.dto.CredentialOfferList;
+import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.service.AgentService;
@@ -29,8 +30,8 @@ public class AgentController {
     }
 
     @PostMapping("/login")
-    public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId) throws InterruptedException, ExecutionException, IndyException, JsonProcessingException {
-        return agentService.login(studentId);
+    public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId, @RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
+        return agentService.login(studentId, MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
     }
 
     @GetMapping("/credential_offer")
