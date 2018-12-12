@@ -54,7 +54,7 @@ public class ScenarioIT {
     static MessageEnvelopeCodec studentCodec;
 
     static String rugLisaDid = null;
-    static String lisaGentDid = null;
+    static String gentLisaDid = null;
     static CredentialOfferList studentCredentialOfferList = null;
 
     static Prover studentProver = null;
@@ -113,7 +113,7 @@ public class ScenarioIT {
         ConnectionResponse connectionResponse = studentCodec.decryptMessage(connectionResponseMessageEnvelope).get();
         //New DID created by student
         log.debug("Lisa Gent DID: " + connectionResponse.getDid());
-        lisaGentDid = connectionResponse.getDid();
+        gentLisaDid = connectionResponse.getDid();
         // Decrypt and accept connection response
         studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
     }
@@ -221,7 +221,7 @@ public class ScenarioIT {
 
     @Test
     public void test5_getExchangePositionsAndApply() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
-        String getRequest = studentCodec.encryptMessage(EXCHANGE_POSITIONS.getURN(), GET_REQUEST, lisaGentDid).get().toJSON();
+        String getRequest = studentCodec.encryptMessage(EXCHANGE_POSITIONS.getURN(), GET_REQUEST, gentLisaDid).get().toJSON();
         MessageEnvelope<AuthcryptableExchangePositions> exchangePositionsMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
                 .body(getRequest)
                 .post("/agent/message")
@@ -243,7 +243,7 @@ public class ScenarioIT {
 
         Proof proof = studentProver.fulfillProofRequest(proofRequest, values).get();
 
-        MessageEnvelope proofEnvelope = studentCodec.encryptMessage(proof, IndyMessageTypes.PROOF, lisaGentDid).get();
+        MessageEnvelope proofEnvelope = studentCodec.encryptMessage(proof, IndyMessageTypes.PROOF, gentLisaDid).get();
 
         givenCorrectHeaders(ENDPOINT_GENT)
                 .body(proofEnvelope)
