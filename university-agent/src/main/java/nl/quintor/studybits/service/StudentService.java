@@ -51,9 +51,9 @@ public class StudentService {
     }
 
     @Transactional
-    public void setExchangePositionData(String studentId, String proofRequest, ExchangePosition exchangePosition) {
-        Student studentEntity = studentRepository.getStudentByStudentId(
-                studentId
+    public void setExchangePositionData(String did, String proofRequest, ExchangePosition exchangePosition) {
+        Student studentEntity = studentRepository.getStudentByStudentDid(
+                did
         );
 
         studentEntity.setProofRequest(proofRequest);

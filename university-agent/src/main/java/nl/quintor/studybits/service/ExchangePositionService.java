@@ -20,6 +20,7 @@ import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import nl.quintor.studybits.repository.ExchangePositionRepository;
 import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
@@ -73,15 +74,15 @@ public class ExchangePositionService {
 
 
     @Transactional
-    public MessageEnvelope<AuthcryptableExchangePositions> getAll() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
-        String studentId = identityService.getStudentId();
-        log.debug("Getting exchange positions for studentId {}", studentId);
+    public MessageEnvelope<AuthcryptableExchangePositions> getAll(String did) throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
 
-        Student student = studentService.getStudentByStudentId(studentId);
+        log.debug("Getting exchange positions for studentDid {}", did);
+
+        Student student = studentService.getStudentByStudentDid(did);
         log.debug("Getting exchange positions for student {}", student);
         if (student == null) {
             // TODO replace with method security
-            throw new IllegalStateException("Need to be authenticated");
+            throw new AccessDeniedException("Need to be authenticated");
         }
 
         List<ExchangePositionDto> exchangePositionDtos = exchangePositionRepository.findAll()
@@ -90,14 +91,13 @@ public class ExchangePositionService {
                     ProofRequest proofRequest = JSONUtil.mapper.readValue(exchangePosition.getProofRequestTemplate(), ProofRequest.class);
 
                     proofRequest.setNonce(Long.toString(Math.abs(random.nextLong())));
-                    proofRequest.setTheirDid(student.getStudentDid());
                     exchangePosition.setStudentDid(student.getStudentDid());
-                    studentService.setExchangePositionData(studentId, proofRequest.toJSON(), exchangePosition);
+                    studentService.setExchangePositionData(did, proofRequest.toJSON(), exchangePosition);
                     return  new ExchangePositionDto(exchangePosition.getName(), proofRequest, exchangePosition.isFulfilled());
                 }))
                 .collect(Collectors.toList());
 
-        return universityCodec.encryptMessage(new AuthcryptableExchangePositions(exchangePositionDtos, student.getStudentDid()), StudyBitsMessageTypes.EXCHANGE_POSITIONS).get();
+        return universityCodec.encryptMessage(new AuthcryptableExchangePositions(exchangePositionDtos), StudyBitsMessageTypes.EXCHANGE_POSITIONS, student.getStudentDid()).get();
     }
 
     @Data

@@ -35,13 +35,13 @@ public class AgentController {
         return agentService.login(studentId, password, MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
     }
 
-    @GetMapping("/credential_offer")
-    public MessageEnvelope<CredentialOfferList> credentialOffers() throws ExecutionException, InterruptedException, JsonProcessingException, IndyException {
-        return agentService.getCredentialOffers();
-    }
+//    @PostMapping("/credential_offer")
+//    public MessageEnvelope<CredentialOfferList> credentialOffers(@RequestBody String message) throws ExecutionException, InterruptedException, IOException, IndyException {
+//        return agentService.getCredentialOffers(MessageEnvelope.parseFromString(message, IndyMessageTypes.GET_REQUEST).getDid());
+//    }
 
-    @GetMapping("/exchange_position")
-    public MessageEnvelope<AuthcryptableExchangePositions> exchangePositions() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        return exchangePositionService.getAll();
-    }
+//    @GetMapping("/exchange_position")
+//    public MessageEnvelope<AuthcryptableExchangePositions> exchangePositions() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+//        return exchangePositionService.getAll();
+//    }
 }
