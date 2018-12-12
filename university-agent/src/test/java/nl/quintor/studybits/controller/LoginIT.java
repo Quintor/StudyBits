@@ -2,11 +2,8 @@ package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
-import nl.quintor.studybits.entity.Student;
-import nl.quintor.studybits.entity.Transcript;
 import nl.quintor.studybits.indy.wrapper.IndyPool;
 import nl.quintor.studybits.indy.wrapper.IndyWallet;
 import nl.quintor.studybits.indy.wrapper.Prover;
@@ -14,23 +11,16 @@ import nl.quintor.studybits.indy.wrapper.dto.*;
 import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
-import nl.quintor.studybits.indy.wrapper.message.MessageType;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
-import nl.quintor.studybits.indy.wrapper.util.SeedUtil;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.messages.StudyBitsMessageTypes;
-import nl.quintor.studybits.repository.StudentRepository;
 import nl.quintor.studybits.service.ExchangePositionService;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.pool.Pool;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -51,8 +41,6 @@ import static org.hamcrest.core.IsNull.notNullValue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Slf4j
-//@RunWith(SpringRunner.class)
-//@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 public class LoginIT {
 
     static String rugVerinymDid = "SYqJSzcfsJMhSt7qjcQ8CC";
@@ -61,15 +49,13 @@ public class LoginIT {
     static final String ENDPOINT_RUG = "http://localhost:8080";
     static final String ENDPOINT_GENT = "http://localhost:8081";
     static IndyPool indyPool;
-    static IndyWallet studentWallet1;
-    static IndyWallet studentWallet2;
-    static MessageEnvelopeCodec studentCodec1;
-    static MessageEnvelopeCodec studentCodec2;
-    static SessionFilter sessionFilter = new SessionFilter();
-    static String randomStudentRugDid = null;
+
+    static IndyWallet studentWallet;
+    static MessageEnvelopeCodec studentCodec;
+
     static String rugLisaDid = null;
     static String lisaGentDid = null;
-    static CredentialOfferList student2CredentialOfferList = null;
+    static CredentialOfferList studentCredentialOfferList = null;
 
     static Prover studentProver = null;
 
@@ -81,15 +67,13 @@ public class LoginIT {
         String poolName = PoolUtils.createPoolLedgerConfig(null, "testPool" + System.currentTimeMillis());
         indyPool = new IndyPool(poolName);
 
-//        studentWallet1 = IndyWallet.create(indyPool, "student1" + System.currentTimeMillis(), SeedUtil.generateSeed()); //Random Student
-        studentWallet2 = IndyWallet.create(indyPool, "student2" + System.currentTimeMillis(), "Student0000000000000000000000000"); //Lisa
+        studentWallet = IndyWallet.create(indyPool, "studentLisa" + System.currentTimeMillis(), "Student0000000000000000000000000"); //Lisa
 
-//        System.out.println("studentWallet1 DID: " + studentWallet1.getMainDid());
-        System.out.println("studentWallet2 DID: " + studentWallet2.getMainDid());
+        System.out.println("studentWallet DID: " + studentWallet.getMainDid());
 
-//        studentCodec1 = new MessageEnvelopeCodec(studentWallet1);
-        studentCodec2 = new MessageEnvelopeCodec(studentWallet2);
-        studentProver = new Prover(studentWallet2, "master_secret_name");
+        studentCodec = new MessageEnvelopeCodec(studentWallet);
+        studentProver = new Prover(studentWallet, "master_secret_name");
+
         //Reset 'Lisa' the dummy student
         givenCorrectHeaders(ENDPOINT_RUG)
             .post("/bootstrap/reset")
@@ -115,21 +99,21 @@ public class LoginIT {
         IndyMessageTypes.init();
 
         // Student creates a connectionRequest
-        ConnectionRequest connectionRequest = studentWallet2.createConnectionRequest().get();
+        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest().get();
         // Student registers
         MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
-                .body(studentCodec2.encryptMessage(connectionRequest, CONNECTION_REQUEST, gentVerinymDid).get().toJSON())
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, gentVerinymDid).get().toJSON())
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        ConnectionResponse connectionResponse = studentCodec2.decryptMessage(connectionResponseMessageEnvelope).get();
+        ConnectionResponse connectionResponse = studentCodec.decryptMessage(connectionResponseMessageEnvelope).get();
         //New DID created by student
         log.debug("Lisa Gent DID: " + connectionResponse.getDid());
         lisaGentDid = connectionResponse.getDid();
         // Decrypt and accept connection response
-        studentWallet2.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
+        studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
     }
 
     @Test
@@ -139,7 +123,7 @@ public class LoginIT {
         IndyMessageTypes.init();
 
         // Student creates a connectionRequest
-        ConnectionRequest connectionRequest = studentWallet2.createConnectionRequest().get();
+        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest().get();
 
         //Uses their public DID to encrypt message
 
@@ -147,7 +131,7 @@ public class LoginIT {
         givenCorrectHeaders(ENDPOINT_RUG)
                 .queryParam("student_id", "12345678")
                 .queryParam("password", "WRONG_PASSWORD")
-                .body(studentCodec2.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(403);
@@ -156,25 +140,25 @@ public class LoginIT {
         MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .queryParam("student_id", "12345678")
                 .queryParam("password", "test1234")
-                .body(studentCodec2.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        ConnectionResponse connectionResponse = studentCodec2.decryptMessage(connectionResponseMessageEnvelope).get();
+        ConnectionResponse connectionResponse = studentCodec.decryptMessage(connectionResponseMessageEnvelope).get();
 
         //New DID created by student
         log.debug("Lisa RUG DID: " + connectionResponse.getDid());
         rugLisaDid = connectionResponse.getDid();
         // Decrypt and accept connection response
-        studentWallet2.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
+        studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
     }
 
     @Test
     public void test3_GetCredentialOffers() throws IndyException, ExecutionException, InterruptedException, IOException {
         //Request CREDENTIAL_OFFERS
-        String getRequest = studentCodec2.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
+        String getRequest = studentCodec.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
 
         MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(getRequest)
@@ -185,24 +169,22 @@ public class LoginIT {
 
         assertThat(credentialOfferEnvelopes.getMessageType(), is(CREDENTIAL_OFFERS));
 
-        student2CredentialOfferList = studentCodec2.decryptMessage(credentialOfferEnvelopes).get();
+        studentCredentialOfferList = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
 
-        assertThat(student2CredentialOfferList.getCredentialOffers().isEmpty(), is(false));
+        assertThat(studentCredentialOfferList.getCredentialOffers().isEmpty(), is(false));
 
-        CredentialOffer credentialOffer = student2CredentialOfferList.getCredentialOffers().get(0);
+        CredentialOffer credentialOffer = studentCredentialOfferList.getCredentialOffers().get(0);
 
         assertThat(credentialOffer.getSchemaId(), notNullValue());
     }
 
-
     @Test
     public void test4_CredentialRequest() throws IndyException, JsonProcessingException, ExecutionException, InterruptedException {
 
+        for (CredentialOffer c : studentCredentialOfferList.getCredentialOffers()) {
+            CredentialRequest credentialRequest = studentProver.createCredentialRequest(rugLisaDid, c).get();
 
-        for (CredentialOffer c : student2CredentialOfferList.getCredentialOffers()) {
-            CredentialRequest credentialRequest = studentProver.createCredentialRequest(rugLisaDid ,c).get();
-
-            MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec2.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, rugLisaDid).get();
+            MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, rugLisaDid).get();
 
             MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                     .body(authcryptedCredentialRequestEnvelope.toJSON())
@@ -213,7 +195,7 @@ public class LoginIT {
 
             assertThat(credentialEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CREDENTIAL.getURN())));
 
-            CredentialWithRequest credentialWithRequest = studentCodec2.decryptMessage(credentialEnvelope).get();
+            CredentialWithRequest credentialWithRequest = studentCodec.decryptMessage(credentialEnvelope).get();
 
             studentProver.storeCredential(credentialWithRequest).get();
 
@@ -224,7 +206,7 @@ public class LoginIT {
             assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
         }
 
-        String getRequest = studentCodec2.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
+        String getRequest = studentCodec.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
 
         MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(getRequest)
@@ -233,13 +215,13 @@ public class LoginIT {
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        student2CredentialOfferList = studentCodec2.decryptMessage(credentialOfferEnvelopes).get();
-        assertThat(student2CredentialOfferList.getCredentialOffers().isEmpty(), is(true));
+        studentCredentialOfferList = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
+        assertThat(studentCredentialOfferList.getCredentialOffers().isEmpty(), is(true));
     }
 
     @Test
     public void test5_getExchangePositionsAndApply() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
-        String getRequest = studentCodec2.encryptMessage(EXCHANGE_POSITIONS.getURN(), GET_REQUEST, lisaGentDid).get().toJSON();
+        String getRequest = studentCodec.encryptMessage(EXCHANGE_POSITIONS.getURN(), GET_REQUEST, lisaGentDid).get().toJSON();
         MessageEnvelope<AuthcryptableExchangePositions> exchangePositionsMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
                 .body(getRequest)
                 .post("/agent/message")
@@ -247,7 +229,7 @@ public class LoginIT {
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
-        AuthcryptableExchangePositions authcryptableExchangePositions = studentCodec2.decryptMessage(exchangePositionsMessageEnvelope).get();
+        AuthcryptableExchangePositions authcryptableExchangePositions = studentCodec.decryptMessage(exchangePositionsMessageEnvelope).get();
 
         List<ExchangePositionService.ExchangePositionDto> exchangePositions = authcryptableExchangePositions.getExchangePositions();
 
@@ -261,7 +243,7 @@ public class LoginIT {
 
         Proof proof = studentProver.fulfillProofRequest(proofRequest, values).get();
 
-        MessageEnvelope proofEnvelope = studentCodec2.encryptMessage(proof, IndyMessageTypes.PROOF, lisaGentDid).get();
+        MessageEnvelope proofEnvelope = studentCodec.encryptMessage(proof, IndyMessageTypes.PROOF, lisaGentDid).get();
 
         givenCorrectHeaders(ENDPOINT_GENT)
                 .body(proofEnvelope)
@@ -275,7 +257,7 @@ public class LoginIT {
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
-        authcryptableExchangePositions = studentCodec2.decryptMessage(exchangePositionsMessageEnvelope).get();
+        authcryptableExchangePositions = studentCodec.decryptMessage(exchangePositionsMessageEnvelope).get();
 
         exchangePositions = authcryptableExchangePositions.getExchangePositions();
 
@@ -288,7 +270,6 @@ public class LoginIT {
                 .baseUri(endpoint)
                 .header("Accept", "application/json")
                 .header("Content-type", "application/json")
-                .filter(sessionFilter)
                 .filter(new ResponseLoggingFilter());
     }
 }
