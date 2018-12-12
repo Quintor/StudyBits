@@ -34,14 +34,4 @@ public class AgentController {
     public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId, @RequestParam(value = "password", required = false) String password, @RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
         return agentService.login(studentId, password, MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
     }
-
-//    @PostMapping("/credential_offer")
-//    public MessageEnvelope<CredentialOfferList> credentialOffers(@RequestBody String message) throws ExecutionException, InterruptedException, IOException, IndyException {
-//        return agentService.getCredentialOffers(MessageEnvelope.parseFromString(message, IndyMessageTypes.GET_REQUEST).getDid());
-//    }
-
-//    @GetMapping("/exchange_position")
-//    public MessageEnvelope<AuthcryptableExchangePositions> exchangePositions() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-//        return exchangePositionService.getAll();
-//    }
 }

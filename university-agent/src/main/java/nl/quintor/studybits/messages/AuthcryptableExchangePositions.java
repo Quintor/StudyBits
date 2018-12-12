@@ -14,8 +14,4 @@ import java.util.List;
 @NoArgsConstructor
 public class AuthcryptableExchangePositions implements Serializable {
     private List<ExchangePositionService.ExchangePositionDto> exchangePositions;
-
-//    @JsonIgnore
-//    @Setter
-//    private String theirDid;
 }

@@ -86,6 +86,7 @@ public class AgentService {
             if(studentService.matchPassword(password, student.getPassword())) {
                 //Check wheter the student already connected with the university before
                 if(student.hasDid()) {
+//                    #TODO: Design behavior when logging in with same Wallet while lost Pairwise DID
 //                    if(student.getStudentDid().equals(messageEnvelope.getDid())) {
 //                        //Perhabs overwrite?
 //                    } else {

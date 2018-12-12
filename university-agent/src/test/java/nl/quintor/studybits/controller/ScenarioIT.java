@@ -41,7 +41,7 @@ import static org.hamcrest.core.IsNull.notNullValue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Slf4j
-public class LoginIT {
+public class ScenarioIT {
 
     static String rugVerinymDid = "SYqJSzcfsJMhSt7qjcQ8CC";
     static String gentVerinymDid = "Vumgc4B8hFq7n5VNAnfDAL";
@@ -75,6 +75,8 @@ public class LoginIT {
         studentProver = new Prover(studentWallet, "master_secret_name");
 
         //Reset 'Lisa' the dummy student
+        //We're not resetting GENT, since there registration is with new ids,
+        //and each new student gets an exchangeposition, so there's no interference from multiple test runs.
         givenCorrectHeaders(ENDPOINT_RUG)
             .post("/bootstrap/reset")
             .then()
@@ -171,7 +173,7 @@ public class LoginIT {
 
         studentCredentialOfferList = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
 
-        assertThat(studentCredentialOfferList.getCredentialOffers().isEmpty(), is(false));
+        assertThat(studentCredentialOfferList.getCredentialOffers(), hasSize(1));
 
         CredentialOffer credentialOffer = studentCredentialOfferList.getCredentialOffers().get(0);
 
@@ -181,30 +183,28 @@ public class LoginIT {
     @Test
     public void test4_CredentialRequest() throws IndyException, JsonProcessingException, ExecutionException, InterruptedException {
 
-        for (CredentialOffer c : studentCredentialOfferList.getCredentialOffers()) {
-            CredentialRequest credentialRequest = studentProver.createCredentialRequest(rugLisaDid, c).get();
+        CredentialRequest credentialRequest = studentProver.createCredentialRequest(rugLisaDid, studentCredentialOfferList.getCredentialOffers().get(0)).get();
 
-            MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, rugLisaDid).get();
+        MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, rugLisaDid).get();
 
-            MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
-                    .body(authcryptedCredentialRequestEnvelope.toJSON())
-                    .post("/agent/message")
-                    .then()
-                    .assertThat().statusCode(200)
-                    .extract().as(MessageEnvelope.class);
+        MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+                .body(authcryptedCredentialRequestEnvelope.toJSON())
+                .post("/agent/message")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope.class);
 
-            assertThat(credentialEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CREDENTIAL.getURN())));
+        assertThat(credentialEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CREDENTIAL.getURN())));
 
-            CredentialWithRequest credentialWithRequest = studentCodec.decryptMessage(credentialEnvelope).get();
+        CredentialWithRequest credentialWithRequest = studentCodec.decryptMessage(credentialEnvelope).get();
 
-            studentProver.storeCredential(credentialWithRequest).get();
+        studentProver.storeCredential(credentialWithRequest).get();
 
-            Credential credential = credentialWithRequest.getCredential();
+        Credential credential = credentialWithRequest.getCredential();
 
-            assertThat(credential.getValues().get("degree").get("raw").asText(), is(equalTo("Bachelor of Arts, Marketing")));
-            assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
-            assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
-        }
+        assertThat(credential.getValues().get("degree").get("raw").asText(), is(equalTo("Bachelor of Arts, Marketing")));
+        assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
+        assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
 
         String getRequest = studentCodec.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
 

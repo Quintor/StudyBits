@@ -1,4 +1,4 @@
-package nl.quintor.studybits;
+package nl.quintor.studybits.config;
 
 import nl.quintor.studybits.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +23,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        //#Todo: Check for production
         http.csrf().disable();
     }
 }
