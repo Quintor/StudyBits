@@ -74,13 +74,17 @@ public class ScenarioIT {
         studentCodec = new MessageEnvelopeCodec(studentWallet);
         studentProver = new Prover(studentWallet, "master_secret_name");
 
-        //Reset 'Lisa' the dummy student
-        //We're not resetting GENT, since there registration is with new ids,
-        //and each new student gets an exchangeposition, so there's no interference from multiple test runs.
+        // Reset 'Lisa', the dummy student
         givenCorrectHeaders(ENDPOINT_RUG)
             .post("/bootstrap/reset")
             .then()
             .assertThat().statusCode(200);
+
+        // We are resetting Gent, since we need to recreate the exchangeposition
+        givenCorrectHeaders(ENDPOINT_GENT)
+                .post("/bootstrap/reset")
+                .then()
+                .assertThat().statusCode(200);
 
         boolean ready = false;
         while (!ready) {
