@@ -19,11 +19,8 @@ import java.util.Optional;
 
 @Component
 public class Seeder {
-
-//      #TODO: Fix circular dependency
-//    @Autowired
-//    private BCryptPasswordEncoder bCryptPasswordEncoder;
-    private BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Autowired
     private StudentRepository studentRepository;
