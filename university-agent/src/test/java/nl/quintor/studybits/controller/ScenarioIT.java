@@ -74,6 +74,7 @@ public class ScenarioIT {
         studentCodec = new MessageEnvelopeCodec(studentWallet);
         studentProver = new Prover(studentWallet, "master_secret_name");
 
+        // Resetting is actually not needed when running once, but is useful for repeatedly running tests in development
         // Reset 'Lisa', the dummy student
         givenCorrectHeaders(ENDPOINT_RUG)
             .post("/bootstrap/reset")
