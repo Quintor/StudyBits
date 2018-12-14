@@ -92,7 +92,7 @@ public class StudentService {
         return studentRepository.saveAndFlush(student);
     }
 
-    public Boolean matchPassword(String password, String password2) {
-       return bCryptPasswordEncoder.matches(password, password2);
+    public Boolean matchPassword(String password, String hashedPassword) {
+       return bCryptPasswordEncoder.matches(password, hashedPassword);
     }
 }

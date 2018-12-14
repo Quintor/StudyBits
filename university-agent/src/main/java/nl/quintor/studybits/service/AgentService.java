@@ -80,7 +80,7 @@ public class AgentService {
 
         // If there is no student in the login message, create one for future purposes.
         if (student == null) {
-            student = studentService.createStudent(UUID.randomUUID().toString(), UUID.randomUUID().toString(), connectionRequest.getDid());
+            student = studentService.createStudent(null, "", connectionRequest.getDid());
             studentId = student.getStudentId();
         } else { // If a student exists in the login message then login
             if(studentService.matchPassword(password, student.getPassword())) {

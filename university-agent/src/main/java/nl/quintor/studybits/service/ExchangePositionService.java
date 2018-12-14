@@ -81,7 +81,6 @@ public class ExchangePositionService {
         Student student = studentService.getStudentByStudentDid(did);
         log.debug("Getting exchange positions for student {}", student);
         if (student == null) {
-            // TODO replace with method security
             throw new AccessDeniedException("Need to be authenticated");
         }
 
