@@ -3,6 +3,8 @@ package nl.quintor.studybits.entity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import javax.persistence.*;
 
@@ -17,6 +19,9 @@ public class Student {
 
     @Column(unique = true)
     private String studentId;
+
+    @Column
+    private String password;
 
     @Column
     private String firstName;
@@ -38,4 +43,12 @@ public class Student {
 
     @Embedded
     private Transcript transcript;
+
+    public boolean hasDid() {
+        if(this.getStudentDid() != null){
+            return true;
+        }
+
+        return false;
+    }
 }

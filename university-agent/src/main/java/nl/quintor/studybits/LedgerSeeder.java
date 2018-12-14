@@ -89,8 +89,8 @@ public class LedgerSeeder {
         // We revert the order from the tutorial, since we use the anoncryption from the verinym
 
         // Create connection request for steward
-        String connectionRequestString = newcomerCodec.encryptMessage(newcomer.createConnectionRequest(steward.getMainDid()).get(),
-                IndyMessageTypes.CONNECTION_REQUEST).get().toJSON();
+        String connectionRequestString = newcomerCodec.encryptMessage(newcomer.createConnectionRequest().get(),
+                IndyMessageTypes.CONNECTION_REQUEST, steward.getMainDid()).get().toJSON();
 
         // Steward decrypts connection request
         ConnectionRequest connectionRequest = stewardCodec.decryptMessage(MessageEnvelope.parseFromString(connectionRequestString, CONNECTION_REQUEST)).get();
@@ -99,7 +99,7 @@ public class LedgerSeeder {
         ConnectionResponse newcomerConnectionResponse = steward.acceptConnectionRequest(connectionRequest).get();
 
         // Steward sends a connection response
-        String newcomerConnectionResponseString =  stewardCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get().toJSON();
+        String newcomerConnectionResponseString =  stewardCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, connectionRequest.getDid()).get().toJSON();
 
 
         MessageEnvelope<ConnectionResponse> connectionResponseEnvelope = MessageEnvelope.parseFromString(newcomerConnectionResponseString, CONNECTION_RESPONSE);
@@ -110,7 +110,7 @@ public class LedgerSeeder {
         newcomer.acceptConnectionResponse(connectionResponse, connectionResponseEnvelope.getDid()).get();
 
         // Faber needs a new DID to interact with identity owners, thus create a new DID request steward to write on ledger
-        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(connectionResponse.getDid()), IndyMessageTypes.VERINYM).get().toJSON();
+        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(connectionResponse.getDid()), IndyMessageTypes.VERINYM, connectionResponse.getDid()).get().toJSON();
 
         // #step 4.2.5 t/m 4.2.8
         // Steward accepts verinym request from Faber and thus writes the new DID on the ledger

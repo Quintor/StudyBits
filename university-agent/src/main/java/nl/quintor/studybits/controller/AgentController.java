@@ -11,6 +11,7 @@ import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -30,17 +31,7 @@ public class AgentController {
     }
 
     @PostMapping("/login")
-    public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId, @RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
-        return agentService.login(studentId, MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
-    }
-
-    @GetMapping("/credential_offer")
-    public MessageEnvelope<CredentialOfferList> credentialOffers() throws ExecutionException, InterruptedException, JsonProcessingException, IndyException {
-        return agentService.getCredentialOffers();
-    }
-
-    @GetMapping("/exchange_position")
-    public MessageEnvelope<AuthcryptableExchangePositions> exchangePositions() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
-        return exchangePositionService.getAll();
+    public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId, @RequestParam(value = "password", required = false) String password, @RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
+        return agentService.login(studentId, password, MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
     }
 }

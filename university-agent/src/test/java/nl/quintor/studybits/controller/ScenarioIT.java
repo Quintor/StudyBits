@@ -2,7 +2,6 @@ package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.filter.session.SessionFilter;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.IndyPool;
@@ -13,7 +12,6 @@ import nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.indy.wrapper.message.MessageEnvelopeCodec;
 import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
-import nl.quintor.studybits.indy.wrapper.util.SeedUtil;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import nl.quintor.studybits.service.ExchangePositionService;
@@ -32,22 +30,35 @@ import java.util.concurrent.ExecutionException;
 
 import static io.restassured.RestAssured.given;
 import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CONNECTION_REQUEST;
-import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CONNECTION_RESPONSE;
 import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.CREDENTIAL_OFFERS;
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
+import static nl.quintor.studybits.indy.wrapper.message.IndyMessageTypes.GET_REQUEST;
+import static nl.quintor.studybits.messages.StudyBitsMessageTypes.EXCHANGE_POSITIONS;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.hamcrest.core.IsNull.notNullValue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Slf4j
 public class ScenarioIT {
+
+    static String rugVerinymDid = "SYqJSzcfsJMhSt7qjcQ8CC";
+    static String gentVerinymDid = "Vumgc4B8hFq7n5VNAnfDAL";
+
     static final String ENDPOINT_RUG = "http://localhost:8080";
     static final String ENDPOINT_GENT = "http://localhost:8081";
     static IndyPool indyPool;
+
     static IndyWallet studentWallet;
     static MessageEnvelopeCodec studentCodec;
-    static SessionFilter sessionFilter = new SessionFilter();
+
+    static String rugLisaDid = null;
+    static String gentLisaDid = null;
+    static CredentialOfferList studentCredentialOfferList = null;
+
+    static Prover studentProver = null;
+
 
     @BeforeClass
     public static void bootstrapBackend() throws Exception {
@@ -56,9 +67,25 @@ public class ScenarioIT {
         String poolName = PoolUtils.createPoolLedgerConfig(null, "testPool" + System.currentTimeMillis());
         indyPool = new IndyPool(poolName);
 
-        studentWallet = IndyWallet.create(indyPool, "student" + System.currentTimeMillis(), SeedUtil.generateSeed());
+        studentWallet = IndyWallet.create(indyPool, "studentLisa" + System.currentTimeMillis(), "Student0000000000000000000000000"); //Lisa
+
+        System.out.println("studentWallet DID: " + studentWallet.getMainDid());
 
         studentCodec = new MessageEnvelopeCodec(studentWallet);
+        studentProver = new Prover(studentWallet, "master_secret_name");
+
+        // Resetting is actually not needed when running once, but is useful for repeatedly running tests in development
+        // Reset 'Lisa', the dummy student
+        givenCorrectHeaders(ENDPOINT_RUG)
+            .post("/bootstrap/reset")
+            .then()
+            .assertThat().statusCode(200);
+
+        // We are resetting Gent, since we need to recreate the exchangeposition
+        givenCorrectHeaders(ENDPOINT_GENT)
+                .post("/bootstrap/reset")
+                .then()
+                .assertThat().statusCode(200);
 
         boolean ready = false;
         while (!ready) {
@@ -69,71 +96,104 @@ public class ScenarioIT {
                     .extract().as(Boolean.class);
         }
 
-        ready = false;
-        while (!ready) {
-            ready = givenCorrectHeaders(ENDPOINT_GENT)
-                    .get("/bootstrap/ready")
-                    .then()
-                    .assertThat().statusCode(200)
-                    .extract().as(Boolean.class);
-        }
+        studentProver.init();
     }
 
     @Test
-    public void test1_Connect() throws IndyException, ExecutionException, InterruptedException, IOException {
+    //Lisa registers to Gent for future purposes
+    public void test1_Register() throws IndyException, ExecutionException, InterruptedException, IOException {
         StudyBitsMessageTypes.init();
         IndyMessageTypes.init();
 
-        String universityVerinymDid = "SYqJSzcfsJMhSt7qjcQ8CC";
-
         // Student creates a connectionRequest
-        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest(universityVerinymDid).get();
-
-        // Student logs in to university
-        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
-                .queryParam("student_id", "12345678")
-                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST).get().toJSON())
+        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest().get();
+        // Student registers
+        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, gentVerinymDid).get().toJSON())
                 .post("/agent/login")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
+        ConnectionResponse connectionResponse = studentCodec.decryptMessage(connectionResponseMessageEnvelope).get();
         //New DID created by student
-        String studentDid = connectionRequest.getDid();
-
+        log.debug("Lisa Gent DID: " + connectionResponse.getDid());
+        gentLisaDid = connectionResponse.getDid();
         // Decrypt and accept connection response
-        studentWallet.acceptConnectionResponse(studentCodec.decryptMessage(connectionResponseMessageEnvelope).get(), connectionResponseMessageEnvelope.getDid()).get();
-
-        // TODO: Fix getting the name through did-endpoint resolution
+        studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
     }
 
     @Test
-    public void test2_obtainingCredential() throws IndyException, ExecutionException, InterruptedException, JsonProcessingException {
+    //Connect to RUG while having a student login
+    public void test2_Login() throws IndyException, ExecutionException, InterruptedException, IOException {
+        StudyBitsMessageTypes.init();
+        IndyMessageTypes.init();
+
+        // Student creates a connectionRequest
+        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest().get();
+
+        //Uses their public DID to encrypt message
+
+        // Student logs in to university with wrong password
+        givenCorrectHeaders(ENDPOINT_RUG)
+                .queryParam("student_id", "12345678")
+                .queryParam("password", "WRONG_PASSWORD")
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
+                .post("/agent/login")
+                .then()
+                .assertThat().statusCode(403);
+
+        // Student logs in to university with correct password
+        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+                .queryParam("student_id", "12345678")
+                .queryParam("password", "test1234")
+                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
+                .post("/agent/login")
+                .then()
+                .assertThat().statusCode(200)
+                .extract().as(MessageEnvelope.class);
+
+        ConnectionResponse connectionResponse = studentCodec.decryptMessage(connectionResponseMessageEnvelope).get();
+
+        //New DID created by student
+        log.debug("Lisa RUG DID: " + connectionResponse.getDid());
+        rugLisaDid = connectionResponse.getDid();
+        // Decrypt and accept connection response
+        studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
+    }
+
+    @Test
+    public void test3_GetCredentialOffers() throws IndyException, ExecutionException, InterruptedException, IOException {
+        //Request CREDENTIAL_OFFERS
+        String getRequest = studentCodec.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
+
         MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
-                .get("/agent/credential_offer")
+                .body(getRequest)
+                .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
 
         assertThat(credentialOfferEnvelopes.getMessageType(), is(CREDENTIAL_OFFERS));
 
-        CredentialOfferList credentialOffers = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
+        studentCredentialOfferList = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
 
-        assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(false));
+        assertThat(studentCredentialOfferList.getCredentialOffers(), hasSize(1));
 
-        CredentialOffer credentialOffer = credentialOffers.getCredentialOffers().get(0);
-        credentialOffer.setTheirDid(credentialOfferEnvelopes.getDid());
+        CredentialOffer credentialOffer = studentCredentialOfferList.getCredentialOffers().get(0);
+
         assertThat(credentialOffer.getSchemaId(), notNullValue());
+    }
 
-        Prover prover = new Prover(studentWallet, "master_secret_name");
-        prover.init();
+    @Test
+    public void test4_CredentialRequest() throws IndyException, JsonProcessingException, ExecutionException, InterruptedException {
 
-        CredentialRequest credentialRequest = prover.createCredentialRequest(credentialOffers.getCredentialOffers().get(0)).get();
+        CredentialRequest credentialRequest = studentProver.createCredentialRequest(rugLisaDid, studentCredentialOfferList.getCredentialOffers().get(0)).get();
 
-        MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST).get();
+        MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, rugLisaDid).get();
 
         MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
-                .body(authcryptedCredentialRequestEnvelope)
+                .body(authcryptedCredentialRequestEnvelope.toJSON())
                 .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
@@ -143,7 +203,7 @@ public class ScenarioIT {
 
         CredentialWithRequest credentialWithRequest = studentCodec.decryptMessage(credentialEnvelope).get();
 
-        prover.storeCredential(credentialWithRequest).get();
+        studentProver.storeCredential(credentialWithRequest).get();
 
         Credential credential = credentialWithRequest.getCredential();
 
@@ -151,52 +211,25 @@ public class ScenarioIT {
         assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
         assertThat(credential.getValues().get("status").get("raw").asText(), is(equalTo("enrolled")));
 
-        credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
-                .get("/agent/credential_offer")
+        String getRequest = studentCodec.encryptMessage(CREDENTIAL_OFFERS.getURN(), GET_REQUEST, rugLisaDid).get().toJSON();
+
+        MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_RUG)
+                .body(getRequest)
+                .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
-        credentialOffers = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
-        assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(true));
+
+        studentCredentialOfferList = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
+        assertThat(studentCredentialOfferList.getCredentialOffers().isEmpty(), is(true));
     }
 
     @Test
-    public void test3_ConnectGent() throws IndyException, ExecutionException, InterruptedException, IOException {
-        String universityVerinymDid = "Vumgc4B8hFq7n5VNAnfDAL";
-
-        // Student creates a connectionRequest
-        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest(universityVerinymDid).get();
-
-        // Student logs in to university
-        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
-                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST).get().toJSON())
-                .post("/agent/login")
-                .then()
-                .assertThat().statusCode(200)
-                .extract().as(MessageEnvelope.class);
-
-        //New DID created by student
-        String studentDid = connectionRequest.getDid();
-
-        // Decrypt and accept connection response
-        studentWallet.acceptConnectionResponse(studentCodec.decryptMessage(connectionResponseMessageEnvelope).get(), connectionResponseMessageEnvelope.getDid());
-
-        // TODO: Fix getting the name through did-endpoint resolution
-
-        MessageEnvelope<CredentialOfferList> credentialOfferEnvelopes = givenCorrectHeaders(ENDPOINT_GENT)
-                .get("/agent/credential_offer")
-                .then()
-                .assertThat().statusCode(200)
-                .extract().as(MessageEnvelope.class);
-
-        CredentialOfferList credentialOffers = studentCodec.decryptMessage(credentialOfferEnvelopes).get();
-        assertThat(credentialOffers.getCredentialOffers().isEmpty(), is(true));
-    }
-
-    @Test
-    public void test4_getExchangePositionsAndApply() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+    public void test5_getExchangePositionsAndApply() throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+        String getRequest = studentCodec.encryptMessage(EXCHANGE_POSITIONS.getURN(), GET_REQUEST, gentLisaDid).get().toJSON();
         MessageEnvelope<AuthcryptableExchangePositions> exchangePositionsMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
-                .get("/agent/exchange_position")
+                .body(getRequest)
+                .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
@@ -210,16 +243,12 @@ public class ScenarioIT {
         assertThat(exchangePositions.get(0).isFulfilled(), is(equalTo(false)));
 
         ProofRequest proofRequest = exchangePositions.get(0).getProofRequest();
-        proofRequest.setTheirDid(authcryptableExchangePositions.getTheirDid());
 
-
-
-        Prover prover = new Prover(studentWallet, "master_secret_name");
         Map<String, String> values = new HashMap<>();
 
-        Proof proof = prover.fulfillProofRequest(proofRequest, values).get();
+        Proof proof = studentProver.fulfillProofRequest(proofRequest, values).get();
 
-        MessageEnvelope proofEnvelope = studentCodec.encryptMessage(proof, IndyMessageTypes.PROOF).get();
+        MessageEnvelope proofEnvelope = studentCodec.encryptMessage(proof, IndyMessageTypes.PROOF, gentLisaDid).get();
 
         givenCorrectHeaders(ENDPOINT_GENT)
                 .body(proofEnvelope)
@@ -228,7 +257,8 @@ public class ScenarioIT {
                 .assertThat().statusCode(200);
 
         exchangePositionsMessageEnvelope = givenCorrectHeaders(ENDPOINT_GENT)
-                .get("/agent/exchange_position")
+                .body(getRequest)
+                .post("/agent/message")
                 .then()
                 .assertThat().statusCode(200)
                 .extract().as(MessageEnvelope.class);
@@ -245,7 +275,6 @@ public class ScenarioIT {
                 .baseUri(endpoint)
                 .header("Accept", "application/json")
                 .header("Content-type", "application/json")
-                .filter(sessionFilter)
                 .filter(new ResponseLoggingFilter());
     }
 }
