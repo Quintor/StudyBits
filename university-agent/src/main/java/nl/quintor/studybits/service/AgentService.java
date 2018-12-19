@@ -13,6 +13,8 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletResponse;
@@ -71,38 +73,15 @@ public class AgentService {
     }
 
     // Student sets up a connection with university agent
-    public MessageEnvelope<ConnectionResponse> login(String studentId, String password, MessageEnvelope<ConnectionRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException, AccessDeniedException {
-        Student student = studentService.getStudentByStudentId(studentId);
-
-        log.debug("StudentID: "+ studentId);
-        log.debug("STUDENT: " + student);
+    public MessageEnvelope<ConnectionResponse> login(MessageEnvelope<ConnectionRequest> messageEnvelope) throws IndyException, ExecutionException, InterruptedException, JsonProcessingException, AccessDeniedException {
         ConnectionRequest connectionRequest = messageEnvelopeCodec.decryptMessage(messageEnvelope).get();
 
-        // If there is no student in the login message, create one for future purposes.
-        if (student == null) {
-            student = studentService.createStudent(null, "", connectionRequest.getDid());
-            studentId = student.getStudentId();
-        } else { // If a student exists in the login message then login
-            if(studentService.matchPassword(password, student.getPassword())) {
-                //Check wheter the student already connected with the university before
-                if(student.hasDid()) {
-//                    #TODO: Design behavior when logging in with same Wallet while lost Pairwise DID
-//                    if(student.getStudentDid().equals(messageEnvelope.getDid())) {
-//                        //Perhabs overwrite?
-//                    } else {
-                        //Conflict, student should request a reset
-                        throw new AccessDeniedException("Access denied for student " + studentId + ". DID already exists.");
-//                    }
-                }
-            }else { //Login is not valid
-                throw new AccessDeniedException("Access denied for student " + studentId +  ". incorrect Student ID and/or Password." );
-            }
-        }
-
+        //Get studentID / current user
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String studentId = auth.getName();
 
         ConnectionResponse connectionResponse = universityTrustAnchor.acceptConnectionRequest(connectionRequest).get();
-        log.debug("Student DID: " + connectionResponse.getDid());
-        log.debug("Student DID2: " + connectionRequest.getDid());
+
         studentService.setStudentDid(studentId, connectionRequest.getDid());
         return messageEnvelopeCodec.encryptMessage(connectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, connectionRequest.getDid()).get();
     }

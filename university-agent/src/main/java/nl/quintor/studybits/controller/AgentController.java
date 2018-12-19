@@ -7,6 +7,7 @@ import nl.quintor.studybits.indy.wrapper.message.MessageEnvelope;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.service.AgentService;
 import nl.quintor.studybits.service.ExchangePositionService;
+import org.apache.commons.codec.binary.Base64;
 import org.hyperledger.indy.sdk.IndyException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -31,7 +32,15 @@ public class AgentController {
     }
 
     @PostMapping("/login")
-    public MessageEnvelope login(@RequestParam(value = "student_id", required = false) String studentId, @RequestParam(value = "password", required = false) String password, @RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
-        return agentService.login(studentId, password, MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
+    public MessageEnvelope login(@RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
+        return agentService.login(MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
+    }
+
+    private String[] handleAuth(String auth) {
+        auth = auth.substring(6);
+        byte[] byteArray = Base64.decodeBase64(auth.getBytes());
+        String decodedString = new String(byteArray);
+
+        return decodedString.split(":");
     }
 }

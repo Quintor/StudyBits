@@ -2,12 +2,15 @@ package nl.quintor.studybits.service;
 
 import nl.quintor.studybits.entity.ExchangePosition;
 import nl.quintor.studybits.entity.Student;
+import nl.quintor.studybits.exceptions.UserAlreadyExistAuthenticationException;
 import nl.quintor.studybits.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import java.util.UUID;
@@ -75,21 +78,39 @@ public class StudentService {
 
     @Transactional
     public Student createStudent() {
-        Student student = new Student();
-        student.setStudentId(UUID.randomUUID().toString());
+        String randomId = UUID.randomUUID().toString();
+        if(!studentExists(randomId)) {
+            Student student = new Student();
+            student.setStudentId(randomId);
 
-        return studentRepository.saveAndFlush(student);
+            return studentRepository.saveAndFlush(student);
+        }
+
+        throw new EntityExistsException();
     }
 
     @Transactional
     public Student createStudent(String id, String password, String did) {
-        Student student = new Student();
-        student.setStudentId(id);
-        String passwordHash = bCryptPasswordEncoder.encode(password);
-        student.setPassword(passwordHash);
-        student.setStudentDid(did);
+        if(!studentExists(id)) {
+            System.out.println("STUDENT ("+id+") DOES NOT EXISTS!!!!");
+            Student student = new Student();
+            student.setStudentId(id);
+            String passwordHash = bCryptPasswordEncoder.encode(password);
+            student.setPassword(passwordHash);
+            student.setStudentDid(did);
 
-        return studentRepository.saveAndFlush(student);
+            return studentRepository.saveAndFlush(student);
+        }
+        //TODO: Return this exception response instead of a 401
+        throw new UserAlreadyExistAuthenticationException("Student '"+id+"' already exists");
+    }
+
+    public Boolean studentExists(String studentId) {
+        if(studentRepository.getStudentByStudentId(studentId) != null) {
+            return true;
+        }
+
+        return false;
     }
 
     public Boolean matchPassword(String password, String hashedPassword) {
