@@ -92,7 +92,6 @@ public class StudentService {
     @Transactional
     public Student createStudent(String id, String password, String did) {
         if(!studentExists(id)) {
-            System.out.println("STUDENT ("+id+") DOES NOT EXISTS!!!!");
             Student student = new Student();
             student.setStudentId(id);
             String passwordHash = bCryptPasswordEncoder.encode(password);
@@ -101,7 +100,7 @@ public class StudentService {
 
             return studentRepository.saveAndFlush(student);
         }
-        //TODO: Return this exception response instead of a 401
+        //TODO: Return this exception as response instead of a 401
         throw new UserAlreadyExistAuthenticationException("Student '"+id+"' already exists");
     }
 

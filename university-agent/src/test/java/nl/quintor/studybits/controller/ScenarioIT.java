@@ -124,19 +124,7 @@ public class ScenarioIT {
         // Decrypt and accept connection response
         studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
     }
-
-//    @Test
-    public void test_Register() throws IndyException, JsonProcessingException, ExecutionException, InterruptedException {
-        ConnectionRequest connectionRequest = studentWallet.createConnectionRequest().get();
-
-        // Student registers
-        givenCorrectHeaders(ENDPOINT_RUG)
-                .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
-                .post("/agent/login")
-                .then()
-                .assertThat().statusCode(200);
-    }
-
+    
     @Test
     //Connect to RUG while having a student login
     public void test2_Login() throws IndyException, ExecutionException, InterruptedException, IOException {
@@ -281,11 +269,6 @@ public class ScenarioIT {
     }
 
     static RequestSpecification givenCorrectHeaders(String endpoint) {
-//        return given()
-//                .baseUri(endpoint)
-//                .header("Accept", "application/json")
-//                .header("Content-type", "application/json")
-//                .filter(new ResponseLoggingFilter());
         return given()
                 .baseUri(endpoint)
                 .auth().preemptive().basic("", "");
@@ -297,9 +280,5 @@ public class ScenarioIT {
         return given()
                 .baseUri(endpoint)
                 .auth().basic(username, password);
-
-//                .header("Accept", "application/json")
-//                .header("Content-type", "application/json")
-//                .filter(new ResponseLoggingFilter());
     }
 }
