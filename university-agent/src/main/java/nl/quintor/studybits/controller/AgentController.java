@@ -35,12 +35,4 @@ public class AgentController {
     public MessageEnvelope login(@RequestBody String message) throws InterruptedException, ExecutionException, IndyException, IOException {
         return agentService.login(MessageEnvelope.parseFromString(message, IndyMessageTypes.CONNECTION_REQUEST));
     }
-
-    private String[] handleAuth(String auth) {
-        auth = auth.substring(6);
-        byte[] byteArray = Base64.decodeBase64(auth.getBytes());
-        String decodedString = new String(byteArray);
-
-        return decodedString.split(":");
-    }
 }
