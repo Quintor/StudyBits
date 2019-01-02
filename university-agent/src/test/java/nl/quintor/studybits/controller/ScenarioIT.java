@@ -1,8 +1,6 @@
 package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import io.restassured.RestAssured;
-import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.IndyPool;
@@ -16,7 +14,6 @@ import nl.quintor.studybits.indy.wrapper.util.PoolUtils;
 import nl.quintor.studybits.messages.AuthcryptableExchangePositions;
 import nl.quintor.studybits.messages.StudyBitsMessageTypes;
 import nl.quintor.studybits.service.ExchangePositionService;
-import org.apache.commons.codec.binary.Base64;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.pool.Pool;
 import org.junit.BeforeClass;

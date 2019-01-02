@@ -104,7 +104,7 @@ public class StudentService {
         throw new UserAlreadyExistAuthenticationException("Student '"+id+"' already exists");
     }
 
-    public Boolean studentExists(String studentId) {
+    public boolean studentExists(String studentId) {
         if(studentRepository.getStudentByStudentId(studentId) != null) {
             return true;
         }
