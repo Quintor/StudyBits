@@ -1,7 +1,6 @@
 package nl.quintor.studybits.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
 import nl.quintor.studybits.indy.wrapper.IndyPool;
@@ -122,7 +121,7 @@ public class ScenarioIT {
         // Decrypt and accept connection response
         studentWallet.acceptConnectionResponse(connectionResponse, connectionResponseMessageEnvelope.getDid()).get();
     }
-
+    
     @Test
     //Connect to RUG while having a student login
     public void test2_Login() throws IndyException, ExecutionException, InterruptedException, IOException {
@@ -135,18 +134,14 @@ public class ScenarioIT {
         //Uses their public DID to encrypt message
 
         // Student logs in to university with wrong password
-        givenCorrectHeaders(ENDPOINT_RUG)
-                .queryParam("student_id", "12345678")
-                .queryParam("password", "WRONG_PASSWORD")
+        givenCorrectHeaders(ENDPOINT_RUG, "12345678", "WRONG_PASSWORD")
                 .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
                 .post("/agent/login")
                 .then()
-                .assertThat().statusCode(403);
+                .assertThat().statusCode(401);
 
         // Student logs in to university with correct password
-        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
-                .queryParam("student_id", "12345678")
-                .queryParam("password", "test1234")
+        MessageEnvelope<ConnectionResponse> connectionResponseMessageEnvelope = givenCorrectHeaders(ENDPOINT_RUG, "12345678", "test1234")
                 .body(studentCodec.encryptMessage(connectionRequest, CONNECTION_REQUEST, rugVerinymDid).get().toJSON())
                 .post("/agent/login")
                 .then()
@@ -273,8 +268,14 @@ public class ScenarioIT {
     static RequestSpecification givenCorrectHeaders(String endpoint) {
         return given()
                 .baseUri(endpoint)
-                .header("Accept", "application/json")
-                .header("Content-type", "application/json")
-                .filter(new ResponseLoggingFilter());
+                .auth().preemptive().basic("", "");
+
+    }
+
+
+    static RequestSpecification givenCorrectHeaders(String endpoint, String username, String password) {
+        return given()
+                .baseUri(endpoint)
+                .auth().basic(username, password);
     }
 }

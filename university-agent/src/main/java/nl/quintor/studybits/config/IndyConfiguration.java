@@ -14,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -43,6 +44,11 @@ public class IndyConfiguration {
     @Bean
     public MessageEnvelopeCodec universityCodec(IndyWallet universityWallet) {
         return new MessageEnvelopeCodec(universityWallet);
+    }
+
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
