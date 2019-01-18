@@ -3,6 +3,7 @@ package nl.quintor.studybits.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import nl.quintor.studybits.LedgerSeeder;
 import nl.quintor.studybits.Seeder;
+import nl.quintor.studybits.entity.Student;
 import nl.quintor.studybits.repository.ExchangePositionRepository;
 import nl.quintor.studybits.repository.StudentRepository;
 import nl.quintor.studybits.service.CredentialDefinitionService;
@@ -10,6 +11,7 @@ import nl.quintor.studybits.service.ExchangePositionService;
 import org.hyperledger.indy.sdk.IndyException;
 import org.hyperledger.indy.sdk.anoncreds.CredDefAlreadyExistsException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.ExecutionException;
@@ -17,6 +19,9 @@ import java.util.concurrent.ExecutionException;
 @RestController
 @RequestMapping(value = "/bootstrap", produces = "application/json")
 public class BootstrapController {
+    @Autowired
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
+
     @Autowired
     private CredentialDefinitionService credentialDefinitionService;
 
@@ -48,6 +53,20 @@ public class BootstrapController {
                 throw e;
             }
         }
+    }
+
+    @PostMapping("/create_student/{studentId}")
+    public String createStudentPosition(@PathVariable("studentId") String studentId) throws JsonProcessingException {
+        Student student = new Student();
+        student.setStudentId(studentId);
+        student.setFirstName("Lisa");
+        student.setLastName("Veren");
+        student.setPassword(bCryptPasswordEncoder.encode("test1234"));
+        student.setStudentDid(null);
+
+        studentRepository.saveAndFlush(student);
+
+        return studentRepository.getStudentByStudentId(studentId).toString();
     }
 
     @PostMapping("/exchange_position/{credDefId}")
