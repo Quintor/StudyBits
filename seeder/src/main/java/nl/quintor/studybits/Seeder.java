@@ -41,7 +41,7 @@ public class Seeder {
         }
     }
 
-    @Command(name = "did", description = "Output DID based on a seed.")
+    @Command(name = "did", description = "Output DID based on a seed.", helpCommand = true)
     static class DidCommand implements Runnable {
         @Parameters(paramLabel = "<seed>", description = "Seed from university")
         private String seed;
@@ -99,14 +99,13 @@ public class Seeder {
     }
 
 
-    @Command(name = "cred-def", description = "Define schema and return schema ID.")
+    @Command(name = "cred-def", description = "Create credential defenition from schema ID and return credential defenitial ID")
     static class CredDefCommand implements Runnable {
         @Parameters(index = "0", paramLabel = "<seed>", description = "Seed from university")
         private String seed;
 
         @Parameters(index = "1", paramLabel = "<schema-id>", description = "Schema ID")
         private String schemaId;
-
 
         @Override
         public void run() {
@@ -130,7 +129,6 @@ public class Seeder {
         @Parameters(index = "1", paramLabel = "<cred-def-id>", description = "Credential definition ID")
         private String creddefId;
 
-
         @Override
         public void run() {
             try {
@@ -145,7 +143,7 @@ public class Seeder {
     }
 
 
-    @Command(name = "student", description = "Create student position.")
+    @Command(name = "student", description = "Create student.")
     static class StudentCommand implements Runnable {
         @Parameters(index = "0", paramLabel = "<domain>", description = "Domain from the target university")
         private String domain;
@@ -166,7 +164,7 @@ public class Seeder {
         }
     }
 
-    static void exception(Exception e) {
+    private static void exception(Exception e) {
         System.out.println(e.getMessage());
     }
 
