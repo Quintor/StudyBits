@@ -22,8 +22,9 @@ public class CredentialDefinitionService {
     @Autowired
     private Issuer universityIssuer;
 
-    public void createCredentialDefintion(String schemaId) throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+    public String createCredentialDefintion(String schemaId) throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
         this.schemaId = schemaId;
         credentialDefinitionId = universityIssuer.defineCredential(schemaId).get();
+        return credentialDefinitionId;
     }
 }

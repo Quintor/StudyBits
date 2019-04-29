@@ -34,7 +34,7 @@ public class Seeder {
     //STN (Sovrin Test Net)
     //https://raw.githubusercontent.com/sovrin-foundation/sovrin/stable/sovrin/pool_transactions_sandbox_genesis
     //REGISTER @ https://s3.us-east-2.amazonaws.com/evernym-cs/sovrin-STNnetwork/www/trust-anchor.html
-    public static boolean stn = true;
+    public static boolean stn = false;
     public static IndyPool indyPool;
 
     @Command(name = "seed", description = "Generate random seed.")
@@ -45,32 +45,19 @@ public class Seeder {
         }
     }
 
-    @Command(name = "did", description = "Output DID based on a seed.", helpCommand = true)
+    @Command(name = "did", description = "Create a wallet and output did", helpCommand = true)
     static class DidCommand implements Runnable {
-        @Parameters(paramLabel = "<seed>", description = "Seed from wallet")
+        @Parameters(index = "0", paramLabel = "<seed>", description = "Seed from wallet")
         private String seed;
+
+        @Parameters(index = "1", paramLabel = "<name>", description = "Name of the wallet")
+        private String name;
 
         @Override
         public void run() {
             try {
-                IndyWallet indyWallet = IndyWallet.create(indyPool, "wallet" + System.currentTimeMillis(), seed);
+                IndyWallet indyWallet = IndyWallet.create(indyPool, name, seed);
                 System.out.println(indyWallet.getMainDid());
-            } catch (Exception e) {
-                exception(e);
-            }
-        }
-    }
-
-    @Command(name = "verkey", description = "Output VerKey based on a seed.", helpCommand = true)
-    static class VerKeyCommand implements Runnable {
-        @Parameters(paramLabel = "<seed>", description = "Seed from wallet")
-        private String seed;
-
-        @Override
-        public void run() {
-            try {
-                IndyWallet indyWallet = IndyWallet.create(indyPool, "wallet" + System.currentTimeMillis(), seed);
-                System.out.println(indyWallet.getMainKey());
             } catch (Exception e) {
                 exception(e);
             }
@@ -80,21 +67,28 @@ public class Seeder {
 
     @Command(name = "onboard", description = "Onboard a university.")
     static class OnboardCommand implements Runnable {
-        @Parameters(paramLabel = "<seed>", description = "Seed from wallet")
+        @Parameters(index = "0", paramLabel = "<seed>", description = "Seed from wallet")
         private String seed;
+
+        @Parameters(index = "1", paramLabel = "<name>", description = "Name of the wallet")
+        private String name;
+
+        @Parameters(index = "2", paramLabel = "<did>", description = "Did corresponding to seed")
+        private String did;
+
 
         @Override
         public void run() {
             try {
-                String name = "university" + System.currentTimeMillis();
+                IndyWallet stewardWallet = IndyWallet.open(indyPool, "steward", "000000000000000000000000Steward1", "Th7MpTaRZVRYnPiabds81Y");
 
-                IndyWallet stewardWallet = IndyWallet.create(indyPool, "steward" + System.currentTimeMillis(), "000000000000000000000000Steward1");
                 TrustAnchor steward = new TrustAnchor(stewardWallet);
 
-                Issuer university = new Issuer(IndyWallet.create(indyPool, name, seed));
+
+                Issuer university = new Issuer(IndyWallet.open(indyPool, name, seed, did));
 
                 onboardIssuer(steward, university);
-                System.out.println("Onboarded univsersity with name " + name );
+                System.out.println("Onboarded university with name " + name );
             } catch (Exception e) {
                 exception(e);
             }
@@ -103,13 +97,10 @@ public class Seeder {
 
     @Command(name = "schema", description = "Define schema and return schema ID.")
     static class SchemaCommand implements Runnable {
-        @Parameters(paramLabel = "<seed>", description = "Seed from wallet")
-        private String seed;
-
         @Override
         public void run() {
             try {
-                IndyWallet stewardWallet = IndyWallet.create(indyPool, "university" + System.currentTimeMillis(),  seed);
+                IndyWallet stewardWallet = IndyWallet.open(indyPool, "steward", "000000000000000000000000Steward1", "Th7MpTaRZVRYnPiabds81Y");
                 Issuer trustAnchorIssuer = new Issuer(stewardWallet);
                 String schemaId = trustAnchorIssuer.createAndSendSchema("Transcript", "1.0", "first_name", "last_name", "degree", "status", "average").get();
                 System.out.println(schemaId);
@@ -122,20 +113,19 @@ public class Seeder {
 
     @Command(name = "cred-def", description = "Create credential defenition from schema ID and return credential defenitial ID")
     static class CredDefCommand implements Runnable {
-        @Parameters(index = "0", paramLabel = "<seed>", description = "Seed from wallet")
-        private String seed;
+        @Parameters(index = "0", paramLabel = "<domain>", description = "Domain from the target university")
+        private String domain;
 
-        @Parameters(index = "1", paramLabel = "<schema-id>", description = "Schema ID")
+        @Parameters(index = "1", paramLabel = "<schema-definition-id>", description = "Credential definition ID")
         private String schemaId;
 
         @Override
         public void run() {
             try {
-                IndyWallet trustAnchorWallet = IndyWallet.create(indyPool, "university" + System.currentTimeMillis(), seed);
-                Issuer trustAnchorIssuer = new Issuer(trustAnchorWallet);
-                String credentialDefinitionId = trustAnchorIssuer.defineCredential(schemaId).get();
+                RestTemplate restTemplate = new RestTemplate();
+                ResponseEntity<String> response = restTemplate.postForEntity(domain+"/bootstrap/credential_definition/" + schemaId, null, String.class);
 
-                System.out.println(credentialDefinitionId);
+                System.out.println(response.getBody());
             } catch (Exception e) {
                 exception(e);
             }
@@ -156,7 +146,7 @@ public class Seeder {
                 RestTemplate restTemplate = new RestTemplate();
                 ResponseEntity<String> response = restTemplate.postForEntity(domain+"/bootstrap/exchange_position/" + creddefId, null, String.class);
 
-                System.out.println(response.toString());
+                System.out.println(response.getBody());
             } catch (Exception e) {
                 exception(e);
             }
@@ -187,9 +177,10 @@ public class Seeder {
 
     private static void exception(Exception e) {
         System.out.println(e.getMessage());
+        e.printStackTrace();
     }
 
-    @Command(name = "", subcommands = {SeedCommand.class, DidCommand.class, VerKeyCommand.class, OnboardCommand.class, SchemaCommand.class, CredDefCommand.class, ExchangePositionCommand.class, StudentCommand.class})
+    @Command(name = "", subcommands = {SeedCommand.class, DidCommand.class, OnboardCommand.class, SchemaCommand.class, CredDefCommand.class, ExchangePositionCommand.class, StudentCommand.class})
     static class ParentCommand implements Runnable {
         @Override
         public void run() {
@@ -238,8 +229,8 @@ public class Seeder {
         // We revert the order from the tutorial, since we use the anoncryption from the verinym
 
         // Create connection request for steward
-        String connectionRequestString = newcomerCodec.encryptMessage(newcomer.createConnectionRequest(steward.getMainDid()).get(),
-                IndyMessageTypes.CONNECTION_REQUEST).get().toJSON();
+        String connectionRequestString = newcomerCodec.encryptMessage(newcomer.createConnectionRequest().get(),
+                IndyMessageTypes.CONNECTION_REQUEST, steward.getMainDid()).get().toJSON();
 
         // Steward decrypts connection request
         ConnectionRequest connectionRequest = stewardCodec.decryptMessage(MessageEnvelope.parseFromString(connectionRequestString, CONNECTION_REQUEST)).get();
@@ -248,7 +239,7 @@ public class Seeder {
         ConnectionResponse newcomerConnectionResponse = steward.acceptConnectionRequest(connectionRequest).get();
 
         // Steward sends a connection response
-        String newcomerConnectionResponseString =  stewardCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE).get().toJSON();
+        String newcomerConnectionResponseString =  stewardCodec.encryptMessage(newcomerConnectionResponse, IndyMessageTypes.CONNECTION_RESPONSE, connectionRequest.getDid()).get().toJSON();
 
 
         MessageEnvelope<ConnectionResponse> connectionResponseEnvelope = MessageEnvelope.parseFromString(newcomerConnectionResponseString, CONNECTION_RESPONSE);
@@ -259,7 +250,7 @@ public class Seeder {
         newcomer.acceptConnectionResponse(connectionResponse, connectionResponseEnvelope.getDid()).get();
 
         // Faber needs a new DID to interact with identity owners, thus create a new DID request steward to write on ledger
-        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(connectionResponse.getDid()), IndyMessageTypes.VERINYM).get().toJSON();
+        String verinymRequest = newcomerCodec.encryptMessage(newcomer.createVerinymRequest(connectionResponse.getDid()), IndyMessageTypes.VERINYM, connectionResponse.getDid()).get().toJSON();
 
         // #step 4.2.5 t/m 4.2.8
         // Steward accepts verinym request from Faber and thus writes the new DID on the ledger
