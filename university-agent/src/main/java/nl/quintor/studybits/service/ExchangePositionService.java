@@ -84,8 +84,6 @@ public class ExchangePositionService {
             throw new AccessDeniedException("Need to be authenticated");
         }
 
-        log.debug("All exchange positions {}", exchangePositionRepository.findAll());
-
         List<ExchangePositionDto> exchangePositionDtos = exchangePositionRepository.findAll()
                 .stream()
                 .map(AsyncUtil.wrapException(exchangePosition -> {
