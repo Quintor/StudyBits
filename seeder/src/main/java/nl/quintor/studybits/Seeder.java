@@ -63,6 +63,28 @@ public class Seeder {
             }
         }
     }
+
+    @Command(name = "verkey", description = "Create a wallet and output did", helpCommand = true)
+    static class VerkeyCommand implements Runnable {
+        @Parameters(index = "0", paramLabel = "<seed>", description = "Seed from wallet")
+        private String seed;
+
+        @Parameters(index = "1", paramLabel = "<name>", description = "Name of the wallet")
+        private String name;
+
+        @Parameters(index = "2", paramLabel = "<did>", description = "Did corresponding to seed")
+        private String did;
+
+        @Override
+        public void run() {
+            try {
+                IndyWallet indyWallet = IndyWallet.open(indyPool, name, seed, did);
+                System.out.println(indyWallet.getMainKey());
+            } catch (Exception e) {
+                exception(e);
+            }
+        }
+    }
     
 
     @Command(name = "onboard", description = "Onboard a university.")
@@ -80,7 +102,7 @@ public class Seeder {
         @Override
         public void run() {
             try {
-                IndyWallet stewardWallet = IndyWallet.open(indyPool, "steward", "000000000000000000000000Steward1", "Th7MpTaRZVRYnPiabds81Y");
+                IndyWallet stewardWallet = IndyWallet.open(indyPool, "pim", "PF7DK2dm5PRG4NHAtDFI74kT2x83LLlq", "1T59X3DqFguYNYVdQ8MCU");
 
                 TrustAnchor steward = new TrustAnchor(stewardWallet);
 
@@ -180,7 +202,7 @@ public class Seeder {
         e.printStackTrace();
     }
 
-    @Command(name = "", subcommands = {SeedCommand.class, DidCommand.class, OnboardCommand.class, SchemaCommand.class, CredDefCommand.class, ExchangePositionCommand.class, StudentCommand.class})
+    @Command(name = "", subcommands = {SeedCommand.class, DidCommand.class, VerkeyCommand.class, OnboardCommand.class, SchemaCommand.class, CredDefCommand.class, ExchangePositionCommand.class, StudentCommand.class})
     static class ParentCommand implements Runnable {
         @Override
         public void run() {
