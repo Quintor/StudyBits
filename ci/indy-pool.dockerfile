@@ -17,7 +17,7 @@ RUN apt-get update -y && apt-get install -y \
 	supervisor
 
 RUN pip3 install -U \
-	pip==9.0.3 \
+	pip \
 	setuptools
 
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 68DB5E88
