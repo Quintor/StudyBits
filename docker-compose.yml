@@ -1,15 +1,12 @@
 version: '2.3'
 services:
   pool:
-    build:
-      context: ci
-      dockerfile: indy-pool.dockerfile
-      args:
-        pool_ip: $TEST_POOL_IP
+    image: studybits/indy-pool:v0.1.1
     ports:
     - "9701-9708:9701-9708"
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
     network_mode: "host"
+    command: bash -c "generate_indy_pool_transactions --nodes 4 --clients 5 --nodeNum 1 2 3 4 --ips='$TEST_POOL_IP,$TEST_POOL_IP,$TEST_POOL_IP,$TEST_POOL_IP'; /usr/bin/supervisord"
 
   university-agent-rug:
     build:
