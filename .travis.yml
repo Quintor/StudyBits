@@ -1,5 +1,5 @@
 sudo: enabled
-script: ./.travis.sh 
+script: travis_retry ./.travis.sh 
 notifications:
   webhooks:
     urls:
