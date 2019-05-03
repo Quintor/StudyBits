@@ -102,7 +102,7 @@ public class Seeder {
         @Override
         public void run() {
             try {
-                IndyWallet stewardWallet = IndyWallet.open(indyPool, "pim", "PF7DK2dm5PRG4NHAtDFI74kT2x83LLlq", "1T59X3DqFguYNYVdQ8MCU");
+                IndyWallet stewardWallet = IndyWallet.open(indyPool, "steward", "000000000000000000000000Steward1", "Th7MpTaRZVRYnPiabds81Y");
 
                 TrustAnchor steward = new TrustAnchor(stewardWallet);
 
