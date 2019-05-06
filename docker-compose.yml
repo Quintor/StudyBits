@@ -1,7 +1,7 @@
 version: '2.3'
 services:
   pool:
-    image: studybits/indy-pool:v0.1.1
+    image: studybits/indy-pool:0.1.2
     ports:
     - "9701-9708:9701-9708"
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
