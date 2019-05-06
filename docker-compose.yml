@@ -4,6 +4,8 @@ services:
     image: studybits/indy-pool:0.1.2
     ports:
     - "9701-9708:9701-9708"
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
     network_mode: "host"
   university-agent-rug:
