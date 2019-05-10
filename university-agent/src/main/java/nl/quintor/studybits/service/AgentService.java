@@ -87,15 +87,20 @@ public class AgentService {
     }
 
     public MessageEnvelope<CredentialOfferList> getCredentialOffers(String did) throws JsonProcessingException, IndyException, ExecutionException, InterruptedException {
+        log.debug("Getting credential offers for did {}", did);
         CredentialOfferList credentialOffers = new CredentialOfferList();
         Student student = studentService.getStudentByStudentDid(did);
 
+        log.debug("Found student for which to get credential offers {}", student);
         if (student.getTranscript() != null && !student.getTranscript().isProven()) {
             CredentialOffer credentialOffer = universityIssuer.createCredentialOffer(credentialDefinitionService.getCredentialDefinitionId(), did).get();
             credentialOffers.addCredentialOffer(credentialOffer);
+            log.debug("Returning credentialOffers {}", credentialOffers);
             return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS, did).get();
         }
 
+
+        log.debug("Student had no credential offers");
         return messageEnvelopeCodec.encryptMessage(credentialOffers, IndyMessageTypes.CREDENTIAL_OFFERS, did).get();
     }
 
