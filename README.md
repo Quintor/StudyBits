@@ -22,4 +22,8 @@ Running tests: `TEST_POOL_IP=127.0.0.1 docker-compose up --build --force-recreat
 
 To run backend locally, install libindy matching the version that is installed in the Dockerfile, [following their instructions](https://github.com/hyperledger/indy-sdk#installing-the-sdk)
 
+## Releasing
+
+Use the release script. `./release.sh 0.3.0` to release version 0.3.0 of the agent.
+
 

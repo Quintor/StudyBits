@@ -45,6 +45,7 @@ services:
       timeout: 2s
       retries: 35
   seeder:
+    image: studybits/seeder
     build:
       context: seeder  
     network_mode: "host"

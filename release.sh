@@ -11,7 +11,9 @@ then
     TEST_POOL_IP=127.0.0.1 docker-compose up --build --force-recreate --exit-code-from tests
 
     docker tag studybits/university-agent "studybits/university-agent:$1"
+    docker tag studybits/seeder "studybits/seeder:$1"
     docker push "studybits/university-agent:$1"
+    docker push "studybits/seeder:$1"
 
     git commit -am "Bump to version $1"
     git tag "v$1"
