@@ -8,7 +8,7 @@ then
     mvn versions:set -DnewVersion=$1
     cd ..
 
-    TEST_POOL_IP=127.0.0.1 docker-compose up --build --force-recreate --exit-code-from tests`
+    TEST_POOL_IP=127.0.0.1 docker-compose up --build --force-recreate --exit-code-from tests
 
     docker tag studybits/university-agent "studybits/university-agent:$1"
     docker push "studybits/university-agent:$1"
