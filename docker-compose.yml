@@ -9,6 +9,7 @@ services:
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
     network_mode: "host"
   university-agent-rug:
+    image: studybits/university-agent
     build:
       context: university-agent
     command: mvn package spring-boot:run
