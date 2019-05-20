@@ -1,17 +1,15 @@
-version: '2.3'
+version: '2.1'
 services:
   pool:
-    build:
-      context: ci
-      dockerfile: indy-pool.dockerfile
-      args:
-        pool_ip: $TEST_POOL_IP
+    image: studybits/indy-pool:0.1.2
     ports:
     - "9701-9708:9701-9708"
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
     # Host networking is used, because we need to know the pool IP at build time, which is kind-of tricky
     network_mode: "host"
-
   university-agent-rug:
+    image: studybits/university-agent
     build:
       context: university-agent
     command: mvn package spring-boot:run
@@ -23,9 +21,6 @@ services:
     depends_on:
       pool:
         condition: service_started
-      university-agent-gent:
-        condition: service_healthy
-
     healthcheck:
       test: curl -f http://localhost:8080/swagger-ui.html || exit 1
       interval: 5s
@@ -49,6 +44,26 @@ services:
       interval: 5s
       timeout: 2s
       retries: 35
+  seeder:
+    image: studybits/seeder
+    build:
+      context: seeder  
+    network_mode: "host"
+    environment:
+    - TEST_POOL_IP=$TEST_POOL_IP
+    depends_on:
+      pool:
+        condition: service_started
+      university-agent-rug:
+        condition: service_healthy
+      university-agent-gent:
+        condition: service_healthy
+    healthcheck:
+      test: bash -c "[ -f /finished.txt ]"
+      interval: 5s
+      timeout: 2s
+      retries: 35
+
   tests:
     build:
       context: university-agent
@@ -57,6 +72,6 @@ services:
     network_mode: "host"
     command: mvn verify
     depends_on:
-      university-agent-rug:
+      seeder:
         condition: service_healthy
 

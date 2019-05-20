@@ -96,4 +96,8 @@ The documentation folder [images](/doc/images) contains a collection of UML syst
 #### Communication 
 [Agent-to-Agent communication videoexplaination](https://drive.google.com/file/d/1PHAy8dMefZG9JNg87Zi33SfKkZvUvXvx/view)
 
+## Releasing
+
+Use the release script. `./release.sh 0.3.0` to release version 0.3.0 of the agent.
+
 
