@@ -1,13 +1,13 @@
 # StudyBits
 
-##Table of contents
+## Table of contents
 1. [Introduction](#introduction)
 2. [Contributing](#contributing)
-    2.1 [Repository Structure](#structure)
-    2.2 [Development Setup](#dev)
-    2.3 [How to send a PR](#pullrequests)
+     2.1 [Repository Structure](#structure)
+     2.2 [Development Setup](#dev)
+     2.3 [How to send a PR](#pullrequests)
 3. [Running StudyBits](#running)
-    3.1 [Running in Docker](#RunInDocker)
+     3.1 [Running in Docker](#RunInDocker)
 4. [System Diagrams](#diagrams)
 5. [Links](#links)
 
@@ -31,12 +31,12 @@ Contact us on [Gitter](https://gitter.im/StudyBits/Lobby)
 The StudyBits repo consists of the following parts:
 
 ```
-+ ci
-    + Contains docker files used by trevor for ci.
-+ docs
-    + Contains design and implementation documentation.
-+ university-agent
-    + Contains java source-code for the university agent.
+* ci
+  * Contains docker files used by Circle-ci for ci.
+* docs
+  * Contains design and implementation documentation.
+* university-agent
+  * Contains java source-code for the university agent.
 ```
 
 ### Development Setup <a name="dev"></a>
@@ -44,13 +44,13 @@ The StudyBits repo consists of the following parts:
 In order to develop for StudyBits a couple of dependencies need to be installed:
 
 1. Install [libindy](https://github.com/hyperledger/indy-sdk/tree/master/libindy)
-    The current version of StudyButs requires Libindy v1.6.6 to be installed, note that later versions are not supperted currently.
+    The current version of StudyButs requires Libindy v1.6.6 to be installed, note that later versions are not supported currently.
 
 2. Make sure [Project Lombok](https://projectlombok.org/) can work it's magic. In your IDE of choice, please enable precompiling.
 
 ### How to send a PR <a name="pullrequests"></a>
 
-Before sending a PR make sure to be complient with the following:
+Before sending a PR make sure to be compliant with the following:
 
 + Do not create many PRs for one feature. Consider implementing a complete feature before sending a PR. 
 + Consider sending a design doc folder for a new feature.
@@ -73,7 +73,7 @@ Please note the the enviroment variable TEST_POOL_IP must be supplied as the IP 
 
 ## System Diagrams <a name="diagrams"></a>
 
-![PackageModel](/docs/images/PackageDiagramAgent.png "UniversityAgent Package Diagram")
+The documentation folder [images](/doc/images) contains a collection of UML system diagram.
 
 ## Links <a name="links"></a>
 
@@ -88,11 +88,10 @@ Please note the the enviroment variable TEST_POOL_IP must be supplied as the IP 
 [indy plenum](https://github.com/hyperledger/indy-plenum/tree/master/docs)
 [indy crypto](https://github.com/hyperledger/indy-crypto/blob/master/README.md)
 
-[Indy documentation old](https://wiki-archive.hyperledger.org/projects/indy/documentation)
-[Indy documentation new](https://hyperledger-indy.readthedocs.io/en/latest/)
+[Indy documentation](https://hyperledger-indy.readthedocs.io/en/latest/)
 
 #### Glossary
-[sovrin glossary](https://docs.google.com/document/d/1giOzpTFXypJ6bAUp_6g93kYOEiNa5eWI1KeIg6wb598/edit)
+[Sovrin glossary](https://docs.google.com/document/d/1giOzpTFXypJ6bAUp_6g93kYOEiNa5eWI1KeIg6wb598/edit)
 
 #### Communication 
 [Agent-to-Agent communication videoexplaination](https://drive.google.com/file/d/1PHAy8dMefZG9JNg87Zi33SfKkZvUvXvx/view)
