@@ -1,5 +1,18 @@
 # StudyBits
 
+## Table of contents
+1. [Introduction](#introduction)
+2. [Contributing](#contributing)
+     2.1 [Repository Structure](#structure)
+     2.2 [Development Setup](#dev)
+     2.3 [How to send a PR](#pullrequests)
+3. [Running StudyBits](#running)
+     3.1 [Running in Docker](#RunInDocker)
+4. [System Diagrams](#diagrams)
+5. [Links](#links)
+
+
+## Introduction <a name="introduction"></a>
 StudyBits allows students to receive credentials from their universities, and issue zero-knowledge proofs to other universities.
 
 StudyBits leverages the [Sovrin network](https://sovrin.org/) to store DIDs, Schemas and Credential Definitions.
@@ -10,17 +23,78 @@ The agent is used through the [StudyBits Wallet](https://github.com/Quintor/Stud
 
 Contact us on [Gitter](https://gitter.im/StudyBits/Lobby)
 
-## Running in docker
+
+## Contributing <a name="contributing"></a>
+
+### Repository Structure <a name="structure"></a>
+
+The StudyBits repo consists of the following parts:
+
+```
+* ci
+  * Contains docker files used by Circle-ci for ci.
+* docs
+  * Contains design and implementation documentation.
+* university-agent
+  * Contains java source-code for the university agent.
+```
+
+### Development Setup <a name="dev"></a>
+
+In order to develop for StudyBits a couple of dependencies need to be installed:
+
+1. Install [libindy](https://github.com/hyperledger/indy-sdk/tree/master/libindy)
+    The current version of StudyButs requires Libindy v1.6.6 to be installed, note that later versions are not supported currently.
+
+2. Make sure [Project Lombok](https://projectlombok.org/) can work it's magic. In your IDE of choice, please enable precompiling.
+
+### How to send a PR <a name="pullrequests"></a>
+
+Before sending a PR make sure to be compliant with the following:
+
++ Do not create many PRs for one feature. Consider implementing a complete feature before sending a PR. 
++ Consider sending a design doc folder for a new feature.
++ Make sure that a new feature or fix is covered by tests (try following TDD).
++ Make sure that documentation is updated according to your changes.
++ Provide a full description of changes in the PR.
++ Make sure that static code validation passed.
++ You need to make sure that all the tests pass.
++ A reviewer or maintainer will merge the PR.
+
+## Running StudyBits <a name="running"></a>
+
+### Running in docker <a name="RunInDocker"></a>
 
 Use `TEST_POOL_IP=127.0.0.1 docker-compose up --build --force-recreate pool university-agent-rug university-agent-gent` 
 
-## Running tests in docker
-
 Running tests: `TEST_POOL_IP=127.0.0.1 docker-compose up --build --force-recreate --exit-code-from tests`
 
-## Running outside of docker
+Please note the the enviroment variable TEST_POOL_IP must be supplied as the IP of the HyperLedger indy nodes you wish to use.
 
-To run backend locally, install libindy matching the version that is installed in the Dockerfile, [following their instructions](https://github.com/hyperledger/indy-sdk#installing-the-sdk)
+## System Diagrams <a name="diagrams"></a>
+
+The documentation folder [images](/doc/images) contains a collection of UML system diagram.
+
+## Links <a name="links"></a>
+
+#### StudyBits Native
+[Quindy](https://github.com/Quintor/quindy)
+[StudentWallet](https://github.com/Quintor/StudyBitsWallet)
+
+#### HyperLedger Indy
+[Indy SDK](https://github.com/hyperledger/indy-sdk)
+[Indy Node](https://github.com/hyperledger/indy-node)
+[Indy Agents](https://github.com/hyperledger/indy-agent)
+[indy plenum](https://github.com/hyperledger/indy-plenum/tree/master/docs)
+[indy crypto](https://github.com/hyperledger/indy-crypto/blob/master/README.md)
+
+[Indy documentation](https://hyperledger-indy.readthedocs.io/en/latest/)
+
+#### Glossary
+[Sovrin glossary](https://docs.google.com/document/d/1giOzpTFXypJ6bAUp_6g93kYOEiNa5eWI1KeIg6wb598/edit)
+
+#### Communication 
+[Agent-to-Agent communication videoexplaination](https://drive.google.com/file/d/1PHAy8dMefZG9JNg87Zi33SfKkZvUvXvx/view)
 
 ## Releasing
 
