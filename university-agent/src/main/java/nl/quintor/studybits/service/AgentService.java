@@ -116,11 +116,11 @@ public class AgentService {
         values.put("average", student.getTranscript().getAverage());
         values.put("status", student.getTranscript().getStatus());
 
-        CredentialWithRequest credentialWithRequest = universityIssuer.createCredential(credentialRequest, values).get();
+        Credential credential = universityIssuer.createCredential(credentialRequest, values).get();
 
         studentService.proveTranscript(student.getStudentId());
 
-        return messageEnvelopeCodec.encryptMessage(credentialWithRequest, IndyMessageTypes.CREDENTIAL, messageEnvelope.getDid()).get();
+        return messageEnvelopeCodec.encryptMessage(credential, IndyMessageTypes.CREDENTIAL, messageEnvelope.getDid()).get();
     }
 
     private MessageEnvelope handleProof(MessageEnvelope<Proof> proofEnvelope) throws IndyException, ExecutionException, InterruptedException, IOException {
@@ -130,7 +130,7 @@ public class AgentService {
 
         Proof proof = messageEnvelopeCodec.decryptMessage(proofEnvelope).get();
         log.debug("Proof: {}", proof);
-        List<ProofAttribute> proofAttributes = universityVerifier.getVerifiedProofAttributes(proofRequest, proof, proofEnvelope.getDid()).get();
+        List<ProofAttribute> proofAttributes = universityVerifier.getVerifiedProofAttributes(proofRequest, proof).get();
 
 
         exchangePositionService.fullfillPosition(student.getExchangePosition().getId());

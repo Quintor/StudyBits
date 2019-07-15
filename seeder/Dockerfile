@@ -1,4 +1,4 @@
-FROM studybits/base-image:0.1.2
+FROM studybits/base-image:0.1.3
 ADD pom.xml /
 RUN mvn package
 
