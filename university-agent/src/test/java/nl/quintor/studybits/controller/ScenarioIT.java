@@ -187,7 +187,7 @@ public class ScenarioIT {
 
         MessageEnvelope authcryptedCredentialRequestEnvelope = studentCodec.encryptMessage(credentialRequest, IndyMessageTypes.CREDENTIAL_REQUEST, rugLisaDid).get();
 
-        MessageEnvelope<CredentialWithRequest> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
+        MessageEnvelope<Credential> credentialEnvelope = givenCorrectHeaders(ENDPOINT_RUG)
                 .body(authcryptedCredentialRequestEnvelope.toJSON())
                 .post("/agent/message")
                 .then()
@@ -196,11 +196,9 @@ public class ScenarioIT {
 
         assertThat(credentialEnvelope.getMessageType().getURN(), is(equalTo(IndyMessageTypes.CREDENTIAL.getURN())));
 
-        CredentialWithRequest credentialWithRequest = studentCodec.decryptMessage(credentialEnvelope).get();
+        Credential credential = studentCodec.decryptMessage(credentialEnvelope).get();
 
-        studentProver.storeCredential(credentialWithRequest).get();
-
-        Credential credential = credentialWithRequest.getCredential();
+        studentProver.storeCredential(credentialRequest, credential).get();
 
         assertThat(credential.getValues().get("degree").get("raw").asText(), is(equalTo("Bachelor of Arts, Marketing")));
         assertThat(credential.getValues().get("average").get("raw").asText(), is(equalTo("8")));
